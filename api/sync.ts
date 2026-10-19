@@ -1,5 +1,5 @@
-import { getStore, isSignedIn, readJson, route, send } from "../server/http";
-import { HttpError, handleSync } from "../server/syncHandler";
+import { getStore, isSignedIn, readJson, route, send } from "../server/http.js";
+import { HttpError, handleSync } from "../server/syncHandler.js";
 
 export default route(["POST"], async (req, res) => {
   if (!isSignedIn(req)) throw new HttpError(401, "Sign in to sync.");

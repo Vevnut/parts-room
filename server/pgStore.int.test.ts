@@ -4,8 +4,8 @@
 import { readFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { PgStore } from "./pgStore";
-import type { Cursor, WireRow } from "./store";
+import { PgStore } from "./pgStore.js";
+import type { Cursor, WireRow } from "./store.js";
 
 const url = process.env.TEST_DATABASE_URL;
 

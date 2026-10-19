@@ -1,7 +1,7 @@
 // One round trip: push local changes, then pull what changed since the client's cursors.
-import { sanitize } from "./fields";
-import { TABLES, decodeCursor, encodeCursor, type Store, type TableName, type UpsertResult, type WireRow } from "./store";
-import type { Bin, Part, System } from "../src/domain/rules";
+import { sanitize } from "./fields.js";
+import { TABLES, decodeCursor, encodeCursor, type Store, type TableName, type UpsertResult, type WireRow } from "./store.js";
+import type { Bin, Part, System } from "../src/domain/rules.js";
 
 export class HttpError extends Error {
   constructor(
@@ -48,7 +48,7 @@ export async function handleSync(store: Store, body: unknown): Promise<SyncRespo
   for (const item of push as { table: TableName; row: unknown }[]) {
     const id = typeof (item.row as { id?: unknown })?.id === "string" ? String((item.row as { id: string }).id).slice(0, 80) : "";
     const s = sanitize(item.table, item.row);
-    if (!s.ok) {
+    if ("reason" in s) {
       results.push({ table: item.table, id, status: "invalid", reason: s.reason });
       continue;
     }

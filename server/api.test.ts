@@ -1,13 +1,13 @@
 // The real /api handlers end to end, with fake requests and the in-memory store.
 import { Readable } from "node:stream";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import login from "../api/login";
-import logout from "../api/logout";
-import session from "../api/session";
-import sync from "../api/sync";
-import { hashPassword } from "./auth";
-import { setStore, type Req, type Res } from "./http";
-import { MemoryStore } from "./memoryStore";
+import login from "../api/login.js";
+import logout from "../api/logout.js";
+import session from "../api/session.js";
+import sync from "../api/sync.js";
+import { hashPassword } from "./auth.js";
+import { setStore, type Req, type Res } from "./http.js";
+import { MemoryStore } from "./memoryStore.js";
 
 interface Call {
   method?: string;

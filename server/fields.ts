@@ -1,6 +1,6 @@
 // The exact fields each synced table accepts. Anything else in a pushed row is dropped.
-import { CONDITIONS, DISPOSITIONS, validatePart, type Part } from "../src/domain/rules";
-import type { TableName, WireRow } from "./store";
+import { CONDITIONS, DISPOSITIONS, validatePart, type Part } from "../src/domain/rules.js";
+import type { TableName, WireRow } from "./store.js";
 
 type Kind = "uuid" | "slug" | "text" | "longtext" | "num" | "int" | "bool" | "date" | "ts" | "condition" | "disposition";
 interface FieldSpec {

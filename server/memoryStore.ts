@@ -1,5 +1,5 @@
 // In-memory Store for tests and local experiments. Mirrors PgStore's rules.
-import { uniqueKey, type Cursor, type Store, type TableName, type UpsertResult, type WireRow } from "./store";
+import { uniqueKey, type Cursor, type Store, type TableName, type UpsertResult, type WireRow } from "./store.js";
 
 interface Entry {
   row: WireRow;

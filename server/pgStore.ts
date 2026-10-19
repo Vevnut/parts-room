@@ -1,8 +1,8 @@
 // Store backed by Neon Postgres (db/schema.sql). Same rules as MemoryStore: last write wins by
 // updatedAt, unique live Part IDs / bin codes, rows ordered by (server_updated_at, id).
 import { neon } from "@neondatabase/serverless";
-import { FIELDS, snake } from "./fields";
-import type { Cursor, Store, TableName, UpsertResult, WireRow } from "./store";
+import { FIELDS, snake } from "./fields.js";
+import type { Cursor, Store, TableName, UpsertResult, WireRow } from "./store.js";
 
 const ISO_MS = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
 const TABLE_SQL: Record<TableName, string> = { parts: "parts", bins: "bins", systems: "systems" };

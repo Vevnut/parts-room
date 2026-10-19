@@ -1,6 +1,6 @@
-import { attemptLogin, sessionCookie } from "../server/auth";
-import { authEnv, clientIp, getStore, isHttps, readJson, route, send } from "../server/http";
-import { HttpError } from "../server/syncHandler";
+import { attemptLogin, sessionCookie } from "../server/auth.js";
+import { authEnv, clientIp, getStore, isHttps, readJson, route, send } from "../server/http.js";
+import { HttpError } from "../server/syncHandler.js";
 
 export default route(["POST"], async (req, res) => {
   const body = (await readJson(req)) as { password?: unknown };

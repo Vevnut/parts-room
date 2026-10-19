@@ -1,9 +1,9 @@
 // Shared plumbing for the /api functions (Vercel Node runtime, and the Vite dev server locally).
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { readCookie, verifySession, type AuthEnv } from "./auth";
-import { PgStore } from "./pgStore";
-import { HttpError } from "./syncHandler";
-import type { Store } from "./store";
+import { readCookie, verifySession, type AuthEnv } from "./auth.js";
+import { PgStore } from "./pgStore.js";
+import { HttpError } from "./syncHandler.js";
+import type { Store } from "./store.js";
 
 export type Req = IncomingMessage & { body?: unknown };
 export type Res = ServerResponse;

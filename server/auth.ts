@@ -2,7 +2,7 @@
 // signed, HttpOnly session cookie. Failed attempts are rate-limited per address and overall.
 import { createHmac, randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
-import type { Store } from "./store";
+import type { Store } from "./store.js";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: { N: number; r: number; p: number }) => Promise<Buffer>;
 

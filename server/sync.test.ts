@@ -1,8 +1,8 @@
 // Server side of sync, run against the in-memory store. The Postgres store must behave the same.
 import { beforeEach, describe, expect, it } from "vitest";
-import { MemoryStore } from "./memoryStore";
-import { HttpError, handleSync } from "./syncHandler";
-import type { Bin, Part } from "../src/domain/rules";
+import { MemoryStore } from "./memoryStore.js";
+import { HttpError, handleSync } from "./syncHandler.js";
+import type { Bin, Part } from "../src/domain/rules.js";
 
 let clock = Date.parse("2026-10-19T12:00:00.000Z");
 const later = (ms = 1000) => (clock += ms);

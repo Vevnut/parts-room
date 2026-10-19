@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { MemoryStore } from "./memoryStore";
-import { attemptLogin, hashPassword, sessionCookie, signSession, verifyPassword, verifySession, MAX_FAILURES } from "./auth";
+import { MemoryStore } from "./memoryStore.js";
+import { attemptLogin, hashPassword, sessionCookie, signSession, verifyPassword, verifySession, MAX_FAILURES } from "./auth.js";
 
 const SECRET = "test-secret-at-least-32-characters-long!!";
 
