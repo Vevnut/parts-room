@@ -159,6 +159,14 @@ export default function More() {
 
       <SyncSection />
 
+      <Link to="/systems" className="card row-between link-card">
+        <span>
+          <b>Systems</b>
+          <span className="sub block">Add, rename, reorder or hide the systems you file parts under.</span>
+        </span>
+        <span aria-hidden>›</span>
+      </Link>
+
       <section className="card">
         <h2>Download a backup</h2>
         <p className="sub">

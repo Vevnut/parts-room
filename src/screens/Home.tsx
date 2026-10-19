@@ -111,7 +111,7 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {s.bySystem.map((r) => (
+                  {s.bySystem.filter((r) => r.keptParts > 0 || systems.find((x) => x.id === r.systemId)?.active).map((r) => (
                     <tr key={r.systemId} className={r.keptParts ? "" : "dim"}>
                       <td>
                         <Link to={`/parts?system=${r.systemId}`}>{r.name}</Link>

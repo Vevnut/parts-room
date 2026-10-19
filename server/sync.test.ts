@@ -170,6 +170,11 @@ describe("pulling", () => {
     expect(res.rows.parts.find((r) => r.id === a.id)?.deletedAt).toBe("2026-10-19T11:30:00.000Z");
   });
 
+  it("refuses a system with a blank name", async () => {
+    const res = await push({ table: "systems", row: { id: "blank", name: "  ", sortOrder: 1, active: true } });
+    expect(res.results[0].status).toBe("invalid");
+  });
+
   it("syncs systems by their slug ids", async () => {
     const res = await push({ table: "systems", row: { id: "fuel-system", name: "Fuel System", sortOrder: 4, active: true } });
     expect(res.results[0].status).toBe("ok");

@@ -389,11 +389,14 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
         <Field label="System">
           <select value={f.systemId ?? ""} onChange={(e) => set({ systemId: e.target.value || null })}>
             <option value="">— None —</option>
-            {systems?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
+            {systems
+              ?.filter((s) => s.active || s.id === f.systemId)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.active ? "" : " (hidden)"}
+                </option>
+              ))}
           </select>
         </Field>
         <div className="field">

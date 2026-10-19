@@ -3,17 +3,20 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { quickAdd, suggestPartId } from "../db/repo";
+import { db } from "../db/db";
 import { DISPOSITIONS, type Disposition } from "../domain/rules";
 import { Choice, Field, Stepper, useDraft, useSystems, useToast } from "../ui";
 
 interface Form {
   name: string;
+  mfrPartNumber: string;
   systemId: string | null;
   qty: number;
   disposition: Disposition | null;
 }
 
-const blank = (systemId: string | null = null): Form => ({ name: "", systemId, qty: 1, disposition: "Keep" });
+const blank = (systemId: string | null = null): Form => ({ name: "", mfrPartNumber: "", systemId, qty: 1, disposition: "Keep" });
+const SHOW_PART_NO = "quickAdd.showPartNumber"; // per-device preference, not synced
 
 export default function QuickAdd() {
   const systems = useSystems();
@@ -21,7 +24,9 @@ export default function QuickAdd() {
   const f = draft.value;
   const set = (patch: Partial<Form>) => draft.setValue({ ...f, ...patch });
   const nextId = useLiveQuery(() => suggestPartId(), []);
-  const [last, setLast] = useState<{ id: string; partId: string; name: string } | null>(null);
+  const showPartNo = useLiveQuery(async () => (await db.settings.get(SHOW_PART_NO))?.value === true, [], false);
+  const activeSystems = (systems ?? []).filter((s) => s.active || s.id === f.systemId);
+  const [last, setLast] = useState<{ id: string; partId: string; name: string; mfrPartNumber: string } | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -40,8 +45,8 @@ export default function QuickAdd() {
     }
     setSaving(true);
     try {
-      const p = await quickAdd(f);
-      setLast({ id: p.id, partId: p.partId, name: p.name });
+      const p = await quickAdd({ ...f, mfrPartNumber: showPartNo ? f.mfrPartNumber : "" });
+      setLast({ id: p.id, partId: p.partId, name: p.name, mfrPartNumber: p.mfrPartNumber });
       draft.reset(blank(f.systemId)); // keep the system for the next part off the same shelf
       setError("");
       toast(`Saved ${p.partId}`);
@@ -66,7 +71,10 @@ export default function QuickAdd() {
         <div className="saved">
           <div>
             <span className="saved-id">{last.partId}</span>
-            <span className="saved-name">{last.name}</span>
+            <span className="saved-name">
+              {last.name}
+              {last.mfrPartNumber ? ` · ${last.mfrPartNumber}` : ""}
+            </span>
           </div>
           <Link to={`/parts/${last.id}`} className="btn small">
             Add details
@@ -86,15 +94,39 @@ export default function QuickAdd() {
         />
       </Field>
 
+      {showPartNo && (
+        <Field label="Part number" hint="The manufacturer's number on the part or box">
+          <input
+            id="qa-partno"
+            value={f.mfrPartNumber ?? ""}
+            onChange={(e) => set({ mfrPartNumber: e.target.value })}
+            placeholder="e.g. 47-43026Q06"
+            autoCapitalize="characters"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        </Field>
+      )}
+      <label className="check">
+        <input type="checkbox" checked={showPartNo} onChange={(e) => void db.settings.put({ key: SHOW_PART_NO, value: e.target.checked })} />
+        Add part number in Quick add
+      </label>
+
       <div className="field">
-        <span className="field-label">System</span>
+        <div className="row-between">
+          <span className="field-label">System</span>
+          <Link to="/systems" className="small-link">
+            Edit systems
+          </Link>
+        </div>
         <Choice
           label="System"
           cols={2}
           allowNone
           value={f.systemId}
           onChange={(systemId) => set({ systemId })}
-          options={(systems ?? []).map((s) => ({ value: s.id, label: s.name }))}
+          options={activeSystems.map((s) => ({ value: s.id, label: s.name }))}
         />
       </div>
 

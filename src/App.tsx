@@ -5,6 +5,7 @@ import { ToastProvider } from "./ui";
 import Home from "./screens/Home";
 import QuickAdd from "./screens/QuickAdd";
 import More from "./screens/More";
+import Systems from "./screens/Systems";
 import { PartEdit, PartsList } from "./screens/Parts";
 import { BinDetail, BinEdit, BinsList, NeedsBin, Staged } from "./screens/Bins";
 import { SyncProvider } from "./sync/SyncProvider";
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="/queue/needs-bin" element={<NeedsBin />} />
               <Route path="/queue/staged" element={<Staged />} />
               <Route path="/more" element={<More />} />
+              <Route path="/systems" element={<Systems />} />
               <Route path="*" element={<Home />} />
             </Routes>
           </main>

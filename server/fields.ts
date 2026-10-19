@@ -114,6 +114,7 @@ export function sanitize(table: TableName, input: unknown): Sanitized {
     if (first) return { ok: false, reason: first };
   }
   if (table === "bins" && !String(out.binCode).trim()) return { ok: false, reason: "binCode is required." };
+  if (table === "systems" && !String(out.name).trim()) return { ok: false, reason: "name is required." };
   return { ok: true, row: out as WireRow };
 }
 

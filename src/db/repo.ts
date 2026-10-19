@@ -32,6 +32,12 @@ export class BinNotEmptyError extends Error {
     this.name = "BinNotEmptyError";
   }
 }
+export class SystemNameTakenError extends Error {
+  constructor(name: string) {
+    super(`There's already a system called ${name}.`);
+    this.name = "SystemNameTakenError";
+  }
+}
 export class ValidationError extends Error {
   constructor(public errors: PartErrors) {
     super(Object.values(errors)[0] ?? "Check the form.");
@@ -69,6 +75,71 @@ export async function ensureSeeded(): Promise<void> {
     const rows = DEFAULT_SYSTEMS.map((name, i) => ({ id: slug(name), name, sortOrder: i + 1, active: true }));
     await db.systems.bulkAdd(rows);
     await enqueue("systems", rows.map((r) => r.id));
+  });
+}
+
+// ---- systems: the list behind the System picker. Ids never change, so renaming keeps parts attached. ----
+
+async function checkSystemName(name: string, exceptId?: string): Promise<string> {
+  const clean = name.trim().replace(/\s+/g, " ");
+  if (!clean) throw new Error("Enter a system name.");
+  if (clean.length > 80) throw new Error("Keep the system name under 80 characters.");
+  const clash = (await db.systems.toArray()).find((s) => s.id !== exceptId && s.name.toLowerCase() === clean.toLowerCase());
+  if (clash) throw new SystemNameTakenError(clash.name);
+  return clean;
+}
+
+export async function addSystem(name: string): Promise<System> {
+  return db.transaction("rw", db.systems, db.outbox, async () => {
+    const clean = await checkSystemName(name);
+    const all = await db.systems.toArray();
+    const base = slug(clean).slice(0, 56) || "system";
+    let id = base;
+    for (let i = 2; all.some((s) => s.id === id); i++) id = `${base}-${i}`;
+    const row: System = { id, name: clean, sortOrder: Math.max(0, ...all.map((s) => s.sortOrder)) + 1, active: true };
+    await db.systems.add(row);
+    await enqueue("systems", [id]);
+    return row;
+  });
+}
+
+export async function renameSystem(id: string, name: string): Promise<void> {
+  await db.transaction("rw", db.systems, db.outbox, async () => {
+    const clean = await checkSystemName(name, id);
+    await db.systems.update(id, { name: clean });
+    await enqueue("systems", [id]);
+  });
+}
+
+export async function setSystemActive(id: string, active: boolean): Promise<void> {
+  await db.transaction("rw", db.systems, db.outbox, async () => {
+    await db.systems.update(id, { active });
+    await enqueue("systems", [id]);
+  });
+}
+
+// Swap with the neighbour above (-1) or below (+1).
+export async function moveSystem(id: string, direction: -1 | 1): Promise<void> {
+  await db.transaction("rw", db.systems, db.outbox, async () => {
+    const list = await db.systems.orderBy("sortOrder").toArray();
+    const i = list.findIndex((s) => s.id === id);
+    if (i < 0) return;
+    // Hop over hidden systems so the move is visible in the list the user sees.
+    let j = i + direction;
+    while (j >= 0 && j < list.length && !list[j].active && list[i].active) j += direction;
+    if (j < 0 || j >= list.length) return;
+    // Renumber so equal or gappy sortOrders from older data can't stall the swap.
+    const ids = list.map((s) => s.id);
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    const changed: string[] = [];
+    for (let k = 0; k < ids.length; k++) {
+      const s = list.find((x) => x.id === ids[k])!;
+      if (s.sortOrder !== k + 1) {
+        await db.systems.update(s.id, { sortOrder: k + 1 });
+        changed.push(s.id);
+      }
+    }
+    await enqueue("systems", changed);
   });
 }
 
@@ -153,8 +224,10 @@ export async function quickAdd(input: {
   systemId: string | null;
   qty: number;
   disposition: Disposition | null;
+  mfrPartNumber?: string;
 }): Promise<Part> {
-  return savePart({ ...input, partId: await suggestPartId(), needsDetails: true });
+  const { mfrPartNumber, ...rest } = input;
+  return savePart({ ...rest, mfrPartNumber: (mfrPartNumber ?? "").trim(), partId: await suggestPartId(), needsDetails: true });
 }
 
 // Soft delete so the deletion syncs; the ID is released for manual reuse.
