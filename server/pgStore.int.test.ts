@@ -2,6 +2,7 @@
 //   TEST_DATABASE_URL=postgres://... npm test
 // It deletes everything in the parts, bins, systems and login_failures tables of that database.
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { neon } from "@neondatabase/serverless";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PgStore } from "./pgStore.js";
@@ -23,7 +24,7 @@ describe.skipIf(!url)("PgStore against Postgres", () => {
   });
 
   beforeAll(async () => {
-    const statements = readFileSync(new URL("../db/schema.sql", import.meta.url), "utf8")
+    const statements = readFileSync(join(__dirname, "..", "db", "schema.sql"), "utf8")
       .split(/;\s*(?:\r?\n|$)/)
       .map((s) => s.replace(/^\s*--.*$/gm, "").trim())
       .filter(Boolean);
