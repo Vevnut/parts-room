@@ -4,13 +4,12 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import { ValidationError, deletePart, savePart, stripPart, suggestPartId } from "../db/repo";
+import { filterParts, manufacturerOptions } from "../domain/search";
 import {
   CONDITIONS,
   DISPOSITIONS,
   MANUFACTURERS,
   isKept,
-  placementOf,
-  statusOf,
   totalValue,
   type Condition,
   type Disposition,
@@ -40,7 +39,7 @@ import {
 
 const STATUSES = ["OK", "Reorder", "Out of stock", "Not kept"];
 const PLACEMENTS = ["Needs bin", "Staged", "Put away"];
-const FILTER_KEYS = ["system", "bin", "status", "placement", "disposition", "details"];
+const FILTER_KEYS = ["mfr", "system", "bin", "status", "placement", "disposition", "details"];
 
 export function PartsList() {
   const parts = useParts();
@@ -59,28 +58,24 @@ export function PartsList() {
   const binCode = useMemo(() => new Map((bins ?? []).map((b) => [b.id, b.binCode])), [bins]);
   const sysName = useMemo(() => new Map((systems ?? []).map((s) => [s.id, s.name])), [systems]);
 
+  const manufacturers = useMemo(() => manufacturerOptions(parts ?? []), [parts]);
+
   const rows = useMemo(() => {
     if (!parts) return [];
-    const q = (params.get("q") ?? "").trim().toLowerCase();
-    const sys = params.get("system") ?? "";
-    const bin = params.get("bin") ?? "";
-    const st = params.get("status") ?? "";
-    const pl = params.get("placement") ?? "";
-    const disp = params.get("disposition") ?? "";
-    const details = params.get("details");
-    const r = parts.filter((p) => {
-      if (q) {
-        const hay = [p.partId, p.name, p.mfrPartNumber, p.manufacturer, p.supplier, p.notes, p.oldLocation, binCode.get(p.binId ?? "")].join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      if (sys && (sys === "none" ? p.systemId : p.systemId !== sys)) return false;
-      if (bin && (bin === "none" ? p.binId : p.binId !== bin)) return false;
-      if (st && statusOf(p) !== st) return false;
-      if (pl && placementOf(p) !== pl) return false;
-      if (disp && (disp === "blank" ? p.disposition : p.disposition !== disp)) return false;
-      if (details && !p.needsDetails) return false;
-      return true;
-    });
+    const r = filterParts(
+      parts,
+      {
+        q: params.get("q") ?? "",
+        mfr: params.get("mfr") ?? "",
+        system: params.get("system") ?? "",
+        bin: params.get("bin") ?? "",
+        status: params.get("status") ?? "",
+        placement: params.get("placement") ?? "",
+        disposition: params.get("disposition") ?? "",
+        details: !!params.get("details"),
+      },
+      (id) => binCode.get(id) ?? "",
+    );
     const sort = params.get("sort") || "recent";
     return r.sort((a, b) =>
       sort === "name" ? a.name.localeCompare(b.name) : sort === "id" ? a.partId.localeCompare(b.partId, undefined, { numeric: true }) : b.updatedAt.localeCompare(a.updatedAt),
@@ -101,7 +96,7 @@ export function PartsList() {
       <input
         type="search"
         className="search"
-        placeholder="Search name, Part ID, part #, notes…"
+        placeholder="Search name, Part ID, part #, manufacturer…"
         aria-label="Search parts"
         value={get("q")}
         onChange={(e) => setParam("q", e.target.value)}
@@ -120,6 +115,15 @@ export function PartsList() {
 
       {showFilters && (
         <div className="filters">
+          <select aria-label="Manufacturer" value={get("mfr").toLowerCase()} onChange={(e) => setParam("mfr", e.target.value)}>
+            <option value="">All manufacturers</option>
+            <option value="none">No manufacturer</option>
+            {manufacturers.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label} ({m.count})
+              </option>
+            ))}
+          </select>
           <select aria-label="System" value={get("system")} onChange={(e) => setParam("system", e.target.value)}>
             <option value="">All systems</option>
             <option value="none">No system</option>
@@ -188,8 +192,9 @@ export function PartsList() {
                   <span className="part-name">{p.name}</span>
                   <span className="part-meta">
                     <span className="mono">{p.partId}</span>
-                    {p.systemId && <span>{sysName.get(p.systemId)}</span>}
+                    {p.manufacturer && <span>{p.manufacturer}</span>}
                     {p.mfrPartNumber && <span className="mono">{p.mfrPartNumber}</span>}
+                    {p.systemId && <span>{sysName.get(p.systemId)}</span>}
                   </span>
                   <span className="chips">
                     <StatusChip part={p} />
