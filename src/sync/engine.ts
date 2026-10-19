@@ -1,8 +1,10 @@
 // Sends this device's outbox to the server and merges back what other devices changed.
 // Rule of thumb: the newest edit (by updatedAt) wins; an unsent local edit is never overwritten
 // by an older copy; a refused Part ID stays on this device, flagged, until it's changed.
-import type { BinRow, OutboxEntry, PartRow, PartsDB, SyncedTable } from "../db/db";
+import type { BinRow, OutboxEntry, PartRow, PartsDB, PhotoRow, SyncedTable } from "../db/db";
+import type { PhotoMeta } from "../domain/rules";
 import type { SyncResponse } from "../../server/syncHandler";
+import { toBase64 } from "./photos";
 
 export interface SyncRequest {
   push: { table: SyncedTable; row: Record<string, unknown> }[];
@@ -10,17 +12,43 @@ export interface SyncRequest {
   continue?: boolean;
   limit?: number;
 }
+export interface PhotoUpload extends Omit<PhotoMeta, "size" | "deletedAt"> {
+  data: string; // base64
+}
 export interface Remote {
   sync(body: SyncRequest): Promise<SyncResponse>;
+  /** Sends one photo's image. Optional so sync can run where photos aren't wired up. */
+  uploadPhoto?(body: PhotoUpload): Promise<void>;
 }
 
-const TABLES: SyncedTable[] = ["systems", "bins", "parts"];
+const TABLES: SyncedTable[] = ["systems", "bins", "parts", "photos"];
 const BATCH = 400;
 
+// Device-only fields never go to the server: normalized keys, and a photo's image and upload flag.
 const strip = (row: Record<string, unknown>) => {
-  const { partKey: _p, binKey: _b, ...rest } = row;
+  const { partKey: _p, binKey: _b, data: _d, uploaded: _u, uploadError: _e, ...rest } = row;
   return rest;
 };
+
+// Images go up one at a time before the rest of the sync, so their descriptions exist on the
+// server by the time another device asks. A photo the server refuses outright is flagged and skipped.
+async function uploadPhotos(remote: Remote, database: PartsDB): Promise<number> {
+  if (!remote.uploadPhoto) return 0;
+  const pending = await database.photos.where("uploaded").equals(0).filter((p) => !p.deletedAt && !!p.data && !p.uploadError).toArray();
+  let sent = 0;
+  for (const p of pending) {
+    try {
+      await remote.uploadPhoto({ id: p.id, partId: p.partId, mime: p.mime, width: p.width, height: p.height, createdAt: p.createdAt, updatedAt: p.updatedAt, data: toBase64(p.data!) });
+      await database.photos.update(p.id, { uploaded: 1 });
+      sent++;
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 400 || status === 413 || status === 415) await database.photos.update(p.id, { uploadError: (e as Error).message });
+      else throw e; // offline, signed out or server trouble: try again next sync
+    }
+  }
+  return sent;
+}
 const newer = (a: unknown, b: unknown) => typeof a === "string" && typeof b === "string" && Date.parse(a) > Date.parse(b);
 const entryKey = (t: SyncedTable, id: string) => `${t}:${id}`;
 
@@ -41,6 +69,7 @@ export async function syncOnce(remote: Remote, database: PartsDB, opts: { limit?
   const summary: SyncSummary = { pushed: 0, pulled: 0, conflicts: 0 };
   const sent = new Set<string>();
   let continuing = false;
+  summary.pushed += await uploadPhotos(remote, database);
 
   for (let round = 0; round < 100; round++) {
     // Next batch of unsent, unflagged changes, with a snapshot of exactly what was sent.
@@ -63,7 +92,7 @@ export async function syncOnce(remote: Remote, database: PartsDB, opts: { limit?
     const res = await remote.sync({ push, cursors, continue: continuing, ...(opts.limit ? { limit: opts.limit } : {}) });
     summary.pushed += push.length;
 
-    await database.transaction("rw", [database.parts, database.bins, database.systems, database.outbox, database.syncState], async () => {
+    await database.transaction("rw", [database.parts, database.bins, database.systems, database.photos, database.outbox, database.syncState], async () => {
       for (const r of res.results) {
         const key = entryKey(r.table, r.id);
         const entry = await database.outbox.get([r.table, r.id]);
@@ -112,6 +141,10 @@ async function merge(database: PartsDB, table: SyncedTable, row: Record<string, 
     const key = row.deletedAt ? `deleted:${id}` : String(row.binCode).trim().toUpperCase();
     await moveAsideClash(database, "bins", "binKey", key, id);
     await database.bins.put({ ...(row as unknown as BinRow), binKey: key });
+  } else if (table === "photos") {
+    // Keep a downloaded or locally taken image; drop it once the photo is deleted.
+    const prev = local as PhotoRow | undefined;
+    await database.photos.put({ ...(row as unknown as PhotoMeta), uploaded: 1, data: row.deletedAt ? null : (prev?.data ?? null) });
   } else {
     await database.systems.put(row as never);
   }
@@ -130,6 +163,7 @@ async function moveAsideClash(database: PartsDB, table: "parts" | "bins", index:
 
 export interface SyncStatus {
   pending: number;
+  photosPending: number; // taken on this device, not uploaded yet
   conflicts: { table: SyncedTable; id: string; reason: string }[];
   lastSyncAt: string | null;
 }
@@ -138,7 +172,8 @@ export async function syncStatus(database: PartsDB): Promise<SyncStatus> {
   const all = await database.outbox.toArray();
   return {
     // Parts and bins only: the built-in systems list syncs too, but isn't something the user changed.
-    pending: all.filter((e) => !e.conflict && e.table !== "systems").length,
+    pending: all.filter((e) => !e.conflict && e.table !== "systems" && e.table !== "photos").length,
+    photosPending: await database.photos.where("uploaded").equals(0).filter((p) => !p.deletedAt && !p.uploadError).count(),
     conflicts: all.filter((e) => e.conflict).map((e) => ({ table: e.table, id: e.id, reason: e.conflict! })),
     lastSyncAt: ((await database.syncState.get("lastSyncAt"))?.value as string | undefined) ?? null,
   };

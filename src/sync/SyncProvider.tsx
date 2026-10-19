@@ -16,7 +16,7 @@ interface SyncCtx extends SyncStatus {
   signOut: () => Promise<void>;
 }
 
-const empty: SyncStatus = { pending: 0, conflicts: [], lastSyncAt: null };
+const empty: SyncStatus = { pending: 0, photosPending: 0, conflicts: [], lastSyncAt: null };
 const Ctx = createContext<SyncCtx>({ ...empty, phase: "checking", message: "", syncNow: async () => {}, signIn: async () => {}, signOut: async () => {} });
 export const useSync = () => useContext(Ctx);
 
@@ -90,10 +90,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // Local edits: sync shortly after the last one.
   useEffect(() => {
-    if (!status.pending || signedIn.current === false) return;
+    if ((!status.pending && !status.photosPending) || signedIn.current === false) return;
     const t = window.setTimeout(() => void syncNow(), EDIT_DELAY_MS);
     return () => window.clearTimeout(t);
-  }, [status.pending, syncNow]);
+  }, [status.pending, status.photosPending, syncNow]);
 
   const signIn = useCallback(
     async (password: string) => {

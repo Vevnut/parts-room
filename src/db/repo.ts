@@ -11,6 +11,7 @@ import {
   type Disposition,
   type Part,
   type PartErrors,
+  type PhotoMeta,
   type System,
 } from "../domain/rules";
 
@@ -225,9 +226,27 @@ export async function quickAdd(input: {
   qty: number;
   disposition: Disposition | null;
   mfrPartNumber?: string;
+  manufacturer?: string;
+  oldLocation?: string;
 }): Promise<Part> {
-  const { mfrPartNumber, ...rest } = input;
-  return savePart({ ...rest, mfrPartNumber: (mfrPartNumber ?? "").trim(), partId: await suggestPartId(), needsDetails: true });
+  const { mfrPartNumber, manufacturer, oldLocation, ...rest } = input;
+  return savePart({
+    ...rest,
+    mfrPartNumber: (mfrPartNumber ?? "").trim(),
+    manufacturer: (manufacturer ?? "").trim(),
+    oldLocation: (oldLocation ?? "").trim(),
+    partId: await suggestPartId(),
+    needsDetails: true,
+  });
+}
+
+// Copy a part under the next Part ID, e.g. to split a lot into separate parts.
+// The copy starts at qty 1, not put away, and flagged for details.
+export async function duplicatePart(id: string): Promise<Part> {
+  const src = await db.parts.get(id);
+  if (!src || src.deletedAt) throw new Error("That part no longer exists.");
+  const { id: _id, partKey: _key, createdAt: _c, updatedAt: _u, ...fields } = src;
+  return savePart({ ...fields, partId: await suggestPartId(), qty: 1, movedBack: false, needsDetails: true, deletedAt: null });
 }
 
 // Soft delete so the deletion syncs; the ID is released for manual reuse.
@@ -247,6 +266,31 @@ export async function setMovedBack(id: string, movedBack: boolean): Promise<void
     if (movedBack && !p.binId) throw new Error("Pick a bin before marking it put away.");
     await db.parts.update(id, { movedBack, updatedAt: now() });
     await enqueue("parts", [id]);
+  });
+}
+
+// ---- photos ----
+
+export async function addPhoto(partId: string, data: ArrayBuffer, mime: PhotoMeta["mime"], width: number, height: number): Promise<PhotoMeta> {
+  const at = now();
+  const row = { id: uid(), partId, mime, width, height, size: data.byteLength, createdAt: at, updatedAt: at, deletedAt: null, uploaded: 0 as const, data };
+  await db.photos.add(row);
+  const { uploaded: _u, data: _d, ...meta } = row;
+  return meta;
+}
+
+// A photo that never left this device just disappears; an uploaded one is marked deleted so
+// the deletion reaches the server and other devices.
+export async function deletePhoto(id: string): Promise<void> {
+  await db.transaction("rw", db.photos, db.outbox, async () => {
+    const p = await db.photos.get(id);
+    if (!p) return;
+    if (!p.uploaded) {
+      await db.photos.delete(id);
+      return;
+    }
+    await db.photos.update(id, { deletedAt: now(), updatedAt: now(), data: null });
+    await enqueue("photos", [id]);
   });
 }
 

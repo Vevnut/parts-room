@@ -1,7 +1,7 @@
 // One round trip: push local changes, then pull what changed since the client's cursors.
 import { sanitize } from "./fields.js";
 import { TABLES, decodeCursor, encodeCursor, type Store, type TableName, type UpsertResult, type WireRow } from "./store.js";
-import type { Bin, Part, System } from "../src/domain/rules.js";
+import type { Bin, Part, PhotoMeta, System } from "../src/domain/rules.js";
 
 export class HttpError extends Error {
   constructor(
@@ -19,10 +19,10 @@ const DEFAULT_LIMIT = 500;
 // re-reading this window at the start of every sync catches them.
 const OVERLAP_MS = 5000;
 
-export type PushStatus = UpsertResult | "invalid";
+export type PushStatus = Exclude<UpsertResult, "missing"> | "invalid";
 export interface SyncResponse {
   results: { table: TableName; id: string; status: PushStatus; reason?: string }[];
-  rows: { parts: Part[]; bins: Bin[]; systems: System[] };
+  rows: { parts: Part[]; bins: Bin[]; systems: System[]; photos: PhotoMeta[] };
   cursors: Partial<Record<TableName, string>>;
   more: boolean;
 }
@@ -52,10 +52,12 @@ export async function handleSync(store: Store, body: unknown): Promise<SyncRespo
       results.push({ table: item.table, id, status: "invalid", reason: s.reason });
       continue;
     }
-    results.push({ table: item.table, id, status: await store.upsert(item.table, s.row) });
+    const status = await store.upsert(item.table, s.row);
+    if (status === "missing") results.push({ table: item.table, id, status: "invalid", reason: "The photo hasn't been uploaded yet." });
+    else results.push({ table: item.table, id, status });
   }
 
-  const rows: Record<TableName, WireRow[]> = { parts: [], bins: [], systems: [] };
+  const rows: Record<TableName, WireRow[]> = { parts: [], bins: [], systems: [], photos: [] };
   const cursors: SyncResponse["cursors"] = {};
   let more = false;
   for (const table of TABLES) {

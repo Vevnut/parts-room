@@ -1,6 +1,6 @@
 // Talks to the /api functions. Every call is same-origin; the session lives in an HttpOnly cookie
 // the page can't read.
-import type { Remote, SyncRequest } from "./engine";
+import type { PhotoUpload, Remote, SyncRequest } from "./engine";
 import type { SyncResponse } from "../../server/syncHandler";
 
 export class OfflineError extends Error {
@@ -46,7 +46,24 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 
 export const httpRemote: Remote = {
   sync: (body: SyncRequest) => api<SyncResponse>("/api/sync", body),
+  uploadPhoto: async (body: PhotoUpload) => {
+    await api("/api/photo", body);
+  },
 };
+
+// The image for a photo this device doesn't have. null if it's gone from the server.
+export async function downloadPhoto(id: string): Promise<ArrayBuffer | null> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/photo?id=${encodeURIComponent(id)}`, { credentials: "same-origin" });
+  } catch {
+    throw new OfflineError();
+  }
+  if (res.status === 401) throw new NotSignedInError();
+  if (res.status === 404) return null;
+  if (!res.ok) throw new ServerError(res.status, `The server answered ${res.status}.`);
+  return res.arrayBuffer();
+}
 
 export async function getSession(): Promise<boolean> {
   return (await api<{ signedIn: boolean }>("/api/session")).signedIn;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterParts, manufacturerOptions, type PartFilters } from "./search";
+import { distinctOptions, filterParts, manufacturerOptions, type PartFilters } from "./search";
 import type { Part } from "./rules";
 
 let n = 0;
@@ -42,6 +42,30 @@ describe("search box", () => {
   });
   it("returns everything with no filters", () => {
     expect(filterParts(all, none)).toHaveLength(4);
+  });
+});
+
+describe("old location filter", () => {
+  const a = part({ name: "Gasket set", oldLocation: "Misc bin 7" });
+  const b = part({ name: "Points", oldLocation: " misc bin 7" });
+  const c = part({ name: "Prop nut", oldLocation: "Shelf 3" });
+  const d = part({ name: "Clamp", oldLocation: "" });
+  it("matches regardless of case and spaces, or finds parts with no old location", () => {
+    expect(names(filterParts([a, b, c, d], { loc: "Misc Bin 7" }))).toEqual(["Gasket set", "Points"]);
+    expect(names(filterParts([a, b, c, d], { loc: "none" }))).toEqual(["Clamp"]);
+  });
+  it("lists old locations once each with counts", () => {
+    expect(distinctOptions([a, b, c, d], "oldLocation").map((o) => `${o.label} (${o.count})`)).toEqual(["Misc bin 7 (2)", "Shelf 3 (1)"]);
+  });
+});
+
+describe("no price yet filter", () => {
+  it("finds parts with no retail price, leaving out tossed ones", () => {
+    const priced = part({ name: "Priced", retailPrice: 40 });
+    const unpriced = part({ name: "Unpriced", retailPrice: null });
+    const sell = part({ name: "To sell", retailPrice: null, disposition: "Donate/Sell" });
+    const toss = part({ name: "Junk", retailPrice: null, disposition: "Toss" });
+    expect(names(filterParts([priced, unpriced, sell, toss], { noPrice: true }))).toEqual(["Unpriced", "To sell"]);
   });
 });
 

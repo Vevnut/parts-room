@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { db } from "./db/db";
-import { adjustQty, deletePart, putAwayBin, setMovedBack } from "./db/repo";
+import { adjustQty, deletePart, duplicatePart, putAwayBin, setMovedBack } from "./db/repo";
 import { binStats, isKept, type Bin, type Part } from "./domain/rules";
 import { fmtQty, useToast } from "./ui";
 
@@ -65,6 +65,15 @@ export function buildMenu(t: MenuTarget, d: MenuDeps): MenuItem[] {
       { id: "copy-id", label: "Copy Part ID", run: () => copy(p.partId, p.partId) },
     );
     if (p.mfrPartNumber) items.push({ id: "copy-number", label: "Copy part number", run: () => copy(p.mfrPartNumber, p.mfrPartNumber) });
+    items.push({
+      id: "duplicate",
+      label: "Duplicate part",
+      run: async () => {
+        const c = await duplicatePart(p.id);
+        d.toast(`Copied to ${c.partId}`);
+        d.navigate(`/parts/${c.id}`);
+      },
+    });
     items.push({
       id: "delete",
       label: "Delete part",

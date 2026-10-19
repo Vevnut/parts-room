@@ -20,7 +20,7 @@ describe("menu items for a part", () => {
     const bin = await saveBin({ binCode: "A1-01" });
     const p = await savePart({ partId: "MP-0001", name: "Impeller", qty: 2, binId: bin.id, mfrPartNumber: "47-43026Q06" });
     const items = buildMenu({ kind: "part", part: p, binCode: "A1-01" }, deps());
-    expect(ids(items).slice(0, 9)).toEqual(["open", "go-bin", "put-away", "plus", "minus", "copy-id", "copy-number", "delete", "sep"]);
+    expect(ids(items).slice(0, 10)).toEqual(["open", "go-bin", "put-away", "plus", "minus", "copy-id", "copy-number", "duplicate", "delete", "sep"]);
     expect(items.find((i) => i.id === "put-away")!.label).toBe("Mark put away");
     expect(items.find((i) => i.id === "delete")!.confirmLabel).toBeTruthy();
     expect(ids(items)).toContain("nav-quick-add");

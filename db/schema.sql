@@ -58,6 +58,29 @@ create table if not exists parts (
 create unique index if not exists parts_live_part_id on parts (part_key);
 create index if not exists parts_sync on parts (server_updated_at, (id::text));
 
+-- Conditions added after the first release ("No longer available"). Re-stating the check keeps
+-- older databases in step; it is safe to run repeatedly.
+alter table parts drop constraint if exists parts_condition_check;
+alter table parts add constraint parts_condition_check
+  check (condition in ('New', 'Used - good', 'Needs testing', 'Needs repair', 'No longer available', 'Unknown'));
+
+-- Photos: the image bytes live here; devices sync only the other columns.
+create table if not exists photos (
+  id                uuid primary key,
+  part_id           uuid not null,
+  mime              text not null check (mime in ('image/jpeg', 'image/png', 'image/webp')),
+  width             integer not null check (width >= 0),
+  height            integer not null check (height >= 0),
+  size              integer not null check (size >= 0 and size <= 1500000),
+  bytes             bytea not null,
+  created_at        timestamptz not null,
+  updated_at        timestamptz not null,
+  deleted_at        timestamptz,
+  server_updated_at timestamptz not null default date_trunc('milliseconds', clock_timestamp())
+);
+create index if not exists photos_sync on photos (server_updated_at, (id::text));
+create index if not exists photos_part on photos (part_id);
+
 create table if not exists login_failures (
   key text not null,
   at  timestamptz not null default now()

@@ -8,7 +8,7 @@ import type { Store } from "./store.js";
 export type Req = IncomingMessage & { body?: unknown };
 export type Res = ServerResponse;
 
-const MAX_BODY = 2_000_000;
+const MAX_BODY = 2_500_000; // room for one photo (1.5 MB as base64) plus its details
 
 export async function readJson(req: Req): Promise<unknown> {
   if (req.body !== undefined && req.body !== null && typeof req.body !== "string") return req.body; // Vercel pre-parses

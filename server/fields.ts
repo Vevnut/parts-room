@@ -2,7 +2,9 @@
 import { CONDITIONS, DISPOSITIONS, validatePart, type Part } from "../src/domain/rules.js";
 import type { TableName, WireRow } from "./store.js";
 
-type Kind = "uuid" | "slug" | "text" | "longtext" | "num" | "int" | "bool" | "date" | "ts" | "condition" | "disposition";
+type Kind = "uuid" | "slug" | "text" | "longtext" | "num" | "int" | "bool" | "date" | "ts" | "condition" | "disposition" | "mime";
+
+export const PHOTO_MIMES = ["image/jpeg", "image/png", "image/webp"] as const;
 interface FieldSpec {
   kind: Kind;
   nullable?: boolean;
@@ -57,6 +59,18 @@ export const FIELDS: Record<TableName, Record<string, FieldSpec>> = {
     sortOrder: { kind: "int" },
     active: { kind: "bool" },
   },
+  // Metadata only; the image itself travels through /api/photo.
+  photos: {
+    id: { kind: "uuid" },
+    partId: { kind: "uuid" },
+    mime: { kind: "mime" },
+    width: { kind: "int" },
+    height: { kind: "int" },
+    size: { kind: "int" },
+    createdAt: tsF,
+    updatedAt: tsF,
+    deletedAt: tsN,
+  },
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -88,6 +102,8 @@ function check(kind: Kind, v: unknown): boolean {
       return (CONDITIONS as readonly unknown[]).includes(v);
     case "disposition":
       return (DISPOSITIONS as readonly unknown[]).includes(v);
+    case "mime":
+      return (PHOTO_MIMES as readonly unknown[]).includes(v);
   }
 }
 

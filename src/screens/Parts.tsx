@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
-import { ValidationError, deletePart, savePart, stripPart, suggestPartId } from "../db/repo";
-import { filterParts, manufacturerOptions } from "../domain/search";
+import { ValidationError, deletePart, duplicatePart, savePart, stripPart, suggestPartId } from "../db/repo";
+import { distinctOptions, filterParts, manufacturerOptions } from "../domain/search";
+import { PartPhotos } from "./Photos";
 import {
   CONDITIONS,
   DISPOSITIONS,
@@ -39,7 +40,7 @@ import {
 
 const STATUSES = ["OK", "Reorder", "Out of stock", "Not kept"];
 const PLACEMENTS = ["Needs bin", "Staged", "Put away"];
-const FILTER_KEYS = ["mfr", "system", "bin", "status", "placement", "disposition", "details"];
+const FILTER_KEYS = ["mfr", "loc", "system", "bin", "status", "placement", "disposition", "details", "noprice"];
 
 export function PartsList() {
   const parts = useParts();
@@ -59,6 +60,12 @@ export function PartsList() {
   const sysName = useMemo(() => new Map((systems ?? []).map((s) => [s.id, s.name])), [systems]);
 
   const manufacturers = useMemo(() => manufacturerOptions(parts ?? []), [parts]);
+  const photoCounts = useLiveQuery(async () => {
+    const m = new Map<string, number>();
+    for (const p of await db.photos.filter((x) => !x.deletedAt).toArray()) m.set(p.partId, (m.get(p.partId) ?? 0) + 1);
+    return m;
+  }, []);
+  const locations = useMemo(() => distinctOptions(parts ?? [], "oldLocation"), [parts]);
 
   const rows = useMemo(() => {
     if (!parts) return [];
@@ -67,6 +74,8 @@ export function PartsList() {
       {
         q: params.get("q") ?? "",
         mfr: params.get("mfr") ?? "",
+        loc: params.get("loc") ?? "",
+        noPrice: !!params.get("noprice"),
         system: params.get("system") ?? "",
         bin: params.get("bin") ?? "",
         status: params.get("status") ?? "",
@@ -124,6 +133,15 @@ export function PartsList() {
               </option>
             ))}
           </select>
+          <select aria-label="Old location" value={get("loc").toLowerCase()} onChange={(e) => setParam("loc", e.target.value)}>
+            <option value="">All old locations</option>
+            <option value="none">No old location</option>
+            {locations.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label} ({l.count})
+              </option>
+            ))}
+          </select>
           <select aria-label="System" value={get("system")} onChange={(e) => setParam("system", e.target.value)}>
             <option value="">All systems</option>
             <option value="none">No system</option>
@@ -165,6 +183,10 @@ export function PartsList() {
             <input type="checkbox" checked={!!get("details")} onChange={(e) => setParam("details", e.target.checked ? "1" : "")} />
             Needs details
           </label>
+          <label className="check">
+            <input type="checkbox" checked={!!get("noprice")} onChange={(e) => setParam("noprice", e.target.checked ? "1" : "")} />
+            No price yet
+          </label>
           {activeFilters > 0 && (
             <button type="button" className="btn small" onClick={() => setParams(params.get("q") ? { q: params.get("q")! } : {}, { replace: true })}>
               Clear filters
@@ -200,6 +222,7 @@ export function PartsList() {
                     <StatusChip part={p} />
                     <PlacementChip part={p} />
                     {p.needsDetails && <span className="chip muted">Needs details</span>}
+                    {!!photoCounts?.get(p.id) && <span className="chip info">{photoCounts.get(p.id)} photo{photoCounts.get(p.id) === 1 ? "" : "s"}</span>}
                   </span>
                 </div>
                 <div className="part-side">
@@ -361,10 +384,25 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
     goBack();
   }
 
+  // Copies the saved part (not unsaved edits) and opens the copy, e.g. to split a lot.
+  async function duplicate() {
+    if (!part) return;
+    const copy = await duplicatePart(part.id);
+    toast(`Copied to ${copy.partId}`);
+    navigate(`/parts/${copy.id}`);
+  }
+
   return (
     <form className="screen" onSubmit={save} noValidate>
       <header className="screen-head">
-        <h1>{part ? part.partId : "New part"}</h1>
+        <div className="row-between">
+          <h1>{part ? part.partId : "New part"}</h1>
+          {part && (
+            <button type="button" className="btn small" onClick={() => void duplicate()}>
+              Duplicate
+            </button>
+          )}
+        </div>
         <div className="chips">
           <StatusChip part={preview} />
           <PlacementChip part={preview} />
@@ -493,6 +531,11 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
             <input inputMode="decimal" value={f.retailPrice} onChange={(e) => set({ retailPrice: e.target.value })} placeholder="0.00" />
           </Field>
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Photos</legend>
+        {part ? <PartPhotos partId={part.id} partLabel={`${part.partId} ${part.name}`} /> : <p className="sub">Save the part first, then add photos.</p>}
       </fieldset>
 
       <fieldset>

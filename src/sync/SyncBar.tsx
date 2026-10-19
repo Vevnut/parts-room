@@ -13,6 +13,8 @@ export function ago(iso: string | null): string {
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const waiting = (changes: number, photos: number) =>
+  [changes ? plural(changes, "change", "changes") : "", photos ? plural(photos, "photo", "photos") : ""].filter(Boolean).join(" and ");
 
 export default function SyncBar() {
   const s = useSync();
@@ -32,9 +34,13 @@ export default function SyncBar() {
         </Link>
       );
     case "offline":
-      return <div className="syncbar warn">Offline · {s.pending ? `${plural(s.pending, "change", "changes")} saved on this device` : "everything is saved on this device"}</div>;
+      return (
+        <div className="syncbar warn">
+          Offline · {s.pending || s.photosPending ? `${waiting(s.pending, s.photosPending)} saved on this device` : "everything is saved on this device"}
+        </div>
+      );
     case "syncing":
-      return <div className="syncbar info">Syncing…</div>;
+      return <div className="syncbar info">{s.photosPending ? `Syncing… ${plural(s.photosPending, "photo", "photos")} to upload` : "Syncing…"}</div>;
     case "error":
       return (
         <button type="button" className="syncbar bad" onClick={() => void s.syncNow()}>
@@ -42,6 +48,6 @@ export default function SyncBar() {
         </button>
       );
     default:
-      return <div className="syncbar ok">{s.pending ? `${plural(s.pending, "change", "changes")} waiting to sync` : `✓ Synced ${ago(s.lastSyncAt)}`}</div>;
+      return <div className="syncbar ok">{s.pending || s.photosPending ? `${waiting(s.pending, s.photosPending)} waiting to sync` : `✓ Synced ${ago(s.lastSyncAt)}`}</div>;
   }
 }

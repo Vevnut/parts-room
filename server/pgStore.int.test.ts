@@ -32,7 +32,7 @@ describe.skipIf(!url)("PgStore against Postgres", () => {
     store = new PgStore(url!);
   });
   beforeEach(async () => {
-    await sql("truncate parts, bins, systems, login_failures", []);
+    await sql("truncate parts, bins, systems, photos, login_failures", []);
   });
 
   it("round-trips every field with the same JSON types", async () => {
@@ -68,6 +68,25 @@ describe.skipIf(!url)("PgStore against Postgres", () => {
     }
     expect([...seen].sort()).toEqual([...ids].sort());
     expect(new Set(seen).size).toBe(5);
+  });
+
+  it("accepts the No longer available condition", async () => {
+    expect(await store.upsert("parts", part({ condition: "No longer available" }))).toBe("ok");
+  });
+
+  it("stores photos with their image, syncs only metadata, and deletes through sync", async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 0, 255, 0xff, 0xd9]);
+    const meta: WireRow = { id: uuid(), partId: uuid(), mime: "image/jpeg", width: 10, height: 8, size: jpeg.length, createdAt: "2026-10-19T12:00:00.000Z", updatedAt: "2026-10-19T12:00:00.000Z", deletedAt: null };
+    expect(await store.upsert("photos", meta)).toBe("missing");
+    await store.insertPhoto(meta, jpeg);
+    await store.insertPhoto(meta, jpeg); // retry is harmless
+    const got = await store.getPhoto(meta.id);
+    expect(got?.mime).toBe("image/jpeg");
+    expect([...got!.bytes]).toEqual([...jpeg]);
+    const { rows } = await store.changedSince("photos", null, 10);
+    expect(rows).toEqual([meta]);
+    expect(await store.upsert("photos", { ...meta, deletedAt: "2026-10-19T12:05:00.000Z", updatedAt: "2026-10-19T12:05:00.000Z" })).toBe("ok");
+    expect(await store.getPhoto(meta.id)).toBeNull();
   });
 
   it("counts and clears failed logins", async () => {

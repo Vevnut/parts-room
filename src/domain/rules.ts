@@ -4,7 +4,8 @@
 export const DISPOSITIONS = ["Keep", "Toss", "Donate/Sell", "Unknown"] as const;
 export type Disposition = (typeof DISPOSITIONS)[number];
 
-export const CONDITIONS = ["New", "Used - good", "Needs testing", "Needs repair", "Unknown"] as const;
+// "No longer available": discontinued by the maker, so either worth selling or hard to replace.
+export const CONDITIONS = ["New", "Used - good", "Needs testing", "Needs repair", "No longer available", "Unknown"] as const;
 export type Condition = (typeof CONDITIONS)[number];
 
 export const DEFAULT_SYSTEMS = [
@@ -23,7 +24,7 @@ export const DEFAULT_SYSTEMS = [
   "Other",
 ];
 
-export const MANUFACTURERS = ["Mercury", "MerCruiser", "Yamaha", "Suzuki", "Volvo Penta", "Honda", "Evinrude"];
+export const MANUFACTURERS = ["Mercury", "MerCruiser", "Yamaha", "Suzuki", "Volvo Penta", "Honda", "Evinrude", "Johnson", "OMC"];
 
 export type Status = "Not kept" | "Out of stock" | "Reorder" | "OK";
 export type Placement = "n/a" | "Put away" | "Needs bin" | "Staged";
@@ -62,6 +63,19 @@ export interface Bin {
   shelfZone: string;
   binSize: string;
   labelText: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+// A photo's description. The image travels separately (uploaded once, downloaded when viewed).
+export interface PhotoMeta {
+  id: string;
+  partId: string; // the part's internal id
+  mime: "image/jpeg" | "image/png" | "image/webp";
+  width: number;
+  height: number;
+  size: number; // bytes
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
