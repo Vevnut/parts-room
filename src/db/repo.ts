@@ -250,6 +250,18 @@ export async function setMovedBack(id: string, movedBack: boolean): Promise<void
   });
 }
 
+// Quick +/- from the right-click menu. Never goes below zero. Returns the new quantity.
+export async function adjustQty(id: string, delta: number): Promise<number> {
+  return db.transaction("rw", db.parts, db.outbox, async () => {
+    const p = await db.parts.get(id);
+    if (!p || p.deletedAt) return 0;
+    const qty = Math.max(0, Math.round((p.qty + delta) * 100) / 100);
+    await db.parts.update(id, { qty, updatedAt: now() });
+    await enqueue("parts", [id]);
+    return qty;
+  });
+}
+
 // Returns how many parts were changed. Not-kept parts are skipped.
 export async function assignBin(ids: string[], binId: string | null): Promise<number> {
   const changed: string[] = [];

@@ -29,7 +29,7 @@ export function BinsList() {
           const s = binStats(b.id, parts ?? []);
           return (
             <li key={b.id}>
-              <Link to={`/b/${encodeURIComponent(b.binCode)}`} className="part-row">
+              <Link to={`/b/${encodeURIComponent(b.binCode)}`} className="part-row" data-ctx={`bin:${b.id}`}>
                 <div className="part-main">
                   <span className="row-gap">
                     <BinLabel code={b.binCode} />
@@ -328,7 +328,7 @@ export function NeedsBin() {
         <ul className="list">
           {queue.map((p) => (
             <li key={p.id}>
-              <label className={`pick-row ${picked.has(p.id) ? "on" : ""}`}>
+              <label className={`pick-row ${picked.has(p.id) ? "on" : ""}`} data-ctx={`part:${p.id}`}>
                 <input type="checkbox" checked={picked.has(p.id)} onChange={() => flip(p.id)} />
                 <span className="part-main">
                   <span className="part-name">{p.name}</span>
@@ -382,7 +382,7 @@ export function Staged() {
       {groups.map(({ bin, parts: ps }) => (
         <section key={bin.id} className="group">
           <div className="row-between group-head">
-            <Link to={`/b/${encodeURIComponent(bin.binCode)}`} className="row-gap">
+            <Link to={`/b/${encodeURIComponent(bin.binCode)}`} className="row-gap" data-ctx={`bin:${bin.id}`}>
               <BinLabel code={bin.binCode} />
               <span className="sub">{bin.labelText}</span>
             </Link>
@@ -399,7 +399,7 @@ export function Staged() {
           </div>
           <ul className="list">
             {ps.map((p) => (
-              <li key={p.id} className="part-row static">
+              <li key={p.id} className="part-row static" data-ctx={`part:${p.id}`}>
                 <Link to={`/parts/${p.id}`} className="part-main">
                   <span className="part-name">{p.name}</span>
                   <span className="part-meta">

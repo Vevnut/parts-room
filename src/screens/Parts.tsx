@@ -183,7 +183,7 @@ export function PartsList() {
         <ul className="list">
           {rows.map((p) => (
             <li key={p.id}>
-              <Link to={`/parts/${p.id}`} className="part-row">
+              <Link to={`/parts/${p.id}`} className="part-row" data-ctx={`part:${p.id}`}>
                 <div className="part-main">
                   <span className="part-name">{p.name}</span>
                   <span className="part-meta">

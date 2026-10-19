@@ -10,6 +10,7 @@ import { PartEdit, PartsList } from "./screens/Parts";
 import { BinDetail, BinEdit, BinsList, NeedsBin, Staged } from "./screens/Bins";
 import { SyncProvider } from "./sync/SyncProvider";
 import SyncBar from "./sync/SyncBar";
+import { ContextMenuProvider } from "./ContextMenu";
 
 const NAV = [
   { to: "/", label: "Home", end: true },
@@ -37,32 +38,34 @@ export default function App() {
     <BrowserRouter>
       <ToastProvider>
         <SyncProvider>
-          <ScrollToTop />
-          <main className="app">
-            <SyncBar />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/add" element={<QuickAdd />} />
-              <Route path="/parts" element={<PartsList />} />
-              <Route path="/parts/:id" element={<PartEdit />} />
-              <Route path="/bins" element={<BinsList />} />
-              <Route path="/bins/new" element={<BinEdit />} />
-              <Route path="/bins/:id/edit" element={<BinEdit />} />
-              <Route path="/b/:code" element={<BinDetail />} />
-              <Route path="/queue/needs-bin" element={<NeedsBin />} />
-              <Route path="/queue/staged" element={<Staged />} />
-              <Route path="/more" element={<More />} />
-              <Route path="/systems" element={<Systems />} />
-              <Route path="*" element={<Home />} />
-            </Routes>
-          </main>
-          <nav className="tabbar" aria-label="Main">
-            {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? "on" : "")}>
-                {n.label}
-              </NavLink>
-            ))}
-          </nav>
+          <ContextMenuProvider>
+            <ScrollToTop />
+            <main className="app">
+              <SyncBar />
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/add" element={<QuickAdd />} />
+                <Route path="/parts" element={<PartsList />} />
+                <Route path="/parts/:id" element={<PartEdit />} />
+                <Route path="/bins" element={<BinsList />} />
+                <Route path="/bins/new" element={<BinEdit />} />
+                <Route path="/bins/:id/edit" element={<BinEdit />} />
+                <Route path="/b/:code" element={<BinDetail />} />
+                <Route path="/queue/needs-bin" element={<NeedsBin />} />
+                <Route path="/queue/staged" element={<Staged />} />
+                <Route path="/more" element={<More />} />
+                <Route path="/systems" element={<Systems />} />
+                <Route path="*" element={<Home />} />
+              </Routes>
+            </main>
+            <nav className="tabbar" aria-label="Main">
+              {NAV.map((n) => (
+                <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? "on" : "")}>
+                  {n.label}
+                </NavLink>
+              ))}
+            </nav>
+          </ContextMenuProvider>
         </SyncProvider>
       </ToastProvider>
     </BrowserRouter>
