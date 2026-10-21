@@ -1,4 +1,4 @@
-// Sign-in, sync status and conflicts, plus backup and restore.
+// Sign-in, sync status and conflicts, links to Systems and the Lightspeed export, plus backup and restore.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -163,6 +163,14 @@ export default function More() {
         <span>
           <b>Systems</b>
           <span className="sub block">Add, rename, reorder or hide the systems you file parts under.</span>
+        </span>
+        <span aria-hidden>›</span>
+      </Link>
+
+      <Link to="/export" className="card row-between link-card">
+        <span>
+          <b>Export for Lightspeed</b>
+          <span className="sub block">Download the parts list as an Excel file for a Lightspeed DMS parts import.</span>
         </span>
         <span aria-hidden>›</span>
       </Link>

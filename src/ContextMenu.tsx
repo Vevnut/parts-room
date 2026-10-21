@@ -38,6 +38,7 @@ function navItems(d: MenuDeps): MenuItem[] {
     go("needs-bin", "Needs bin", "/queue/needs-bin"),
     go("staged", "Staged", "/queue/staged"),
     go("systems", "Systems", "/systems"),
+    go("export", "Export for Lightspeed", "/export"),
     go("sync", "Sync & backup", "/more"),
   ];
 }

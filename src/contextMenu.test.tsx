@@ -24,6 +24,7 @@ describe("menu items for a part", () => {
     expect(items.find((i) => i.id === "put-away")!.label).toBe("Mark put away");
     expect(items.find((i) => i.id === "delete")!.confirmLabel).toBeTruthy();
     expect(ids(items)).toContain("nav-quick-add");
+    expect(ids(items)).toContain("nav-export");
   });
 
   it("leaves out bin actions for a tossed part and disables Remove 1 at zero", async () => {
