@@ -7,11 +7,22 @@ import { assignBin, deleteBin, putAwayBin, saveBin, setMovedBack } from "../db/r
 import { binStats, placementOf, type Bin } from "../domain/rules";
 import { oldBins, type OldBin } from "../domain/search";
 import { indexSystems } from "../domain/systems";
+import { binCodeFromScan } from "../domain/binLabels";
+import { ScanButton } from "./Scanner";
 import { BinLabel, Choice, ConfirmButton, Field, StatusChip, fmtMoney, fmtQty, useBins, useParts, useSystems, useToast } from "../ui";
 
 export function BinsList() {
   const bins = useBins();
   const parts = useParts();
+  const navigate = useNavigate();
+  const toast = useToast();
+  // A scanned bin label (its link, or a bare code) opens that bin; anything else just says so.
+  const openScanned = (text: string) => {
+    const code = binCodeFromScan(text);
+    const bin = code ? bins?.find((b) => b.binCode.toUpperCase() === code) : undefined;
+    if (bin) navigate(`/b/${encodeURIComponent(bin.binCode)}`);
+    else toast(code ? `No bin ${code} in the app` : "That isn't a bin label");
+  };
   const old = useMemo(() => oldBins(parts ?? []), [parts]);
   const spots = useMemo(() => oldBins(parts ?? [], "stagingSpot"), [parts]);
   return (
@@ -22,6 +33,14 @@ export function BinsList() {
           Add bin
         </Link>
       </header>
+      {bins && bins.length > 0 && (
+        <div className="actions-row">
+          <ScanButton label="Scan bin label" onScan={(r) => openScanned(r.value)} />
+          <Link to="/labels" className="btn">
+            Print labels
+          </Link>
+        </div>
+      )}
       {bins && bins.length === 0 && (
         <div className="empty">
           <strong>No bins yet</strong>
@@ -220,9 +239,14 @@ export function BinDetail() {
       <header className="screen-head">
         <div className="row-between">
           <BinLabel code={bin.binCode} />
-          <Link to={`/bins/${bin.id}/edit`} className="btn small">
-            Edit bin
-          </Link>
+          <span className="row-gap">
+            <Link to={`/labels?bins=${bin.id}`} className="btn small">
+              Print label
+            </Link>
+            <Link to={`/bins/${bin.id}/edit`} className="btn small">
+              Edit bin
+            </Link>
+          </span>
         </div>
         {bin.labelText && <p className="lead">{bin.labelText}</p>}
         <p className="sub">{[bin.shelfZone, bin.binSize].filter(Boolean).join(" · ")}</p>

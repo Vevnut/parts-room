@@ -7,6 +7,7 @@ import QuickAdd from "./screens/QuickAdd";
 import More from "./screens/More";
 import Systems from "./screens/Systems";
 import Export from "./screens/Export";
+import Labels from "./screens/Labels";
 import { PartEdit, PartsList } from "./screens/Parts";
 import { BinDetail, BinEdit, BinsList, NeedsBin, Staged } from "./screens/Bins";
 import { SyncProvider } from "./sync/SyncProvider";
@@ -57,6 +58,7 @@ export default function App() {
                 <Route path="/more" element={<More />} />
                 <Route path="/systems" element={<Systems />} />
                 <Route path="/export" element={<Export />} />
+                <Route path="/labels" element={<Labels />} />
                 <Route path="*" element={<Home />} />
               </Routes>
             </main>

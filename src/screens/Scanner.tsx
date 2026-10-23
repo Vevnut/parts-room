@@ -67,7 +67,7 @@ function ScannerView({ onScan, onClose }: { onScan: (r: ScanResult) => void; onC
         {!error && <div className="scanner-guide" aria-hidden />}
       </div>
       <p className="scanner-text">
-        {error || (starting ? "Starting the camera…" : "Hold the part number barcode inside the box. It reads on its own.")}
+        {error || (starting ? "Starting the camera…" : "Hold the barcode or QR code inside the box. It reads on its own.")}
       </p>
       <button type="button" className="btn big" onClick={onClose}>
         {error ? "Close" : "Cancel"}
