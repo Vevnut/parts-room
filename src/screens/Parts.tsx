@@ -464,6 +464,9 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
         <Field label="Part name" error={errors.name}>
           <input value={f.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" />
         </Field>
+        <Field label="Description">
+          <textarea rows={3} value={f.notes} onChange={(e) => set({ notes: e.target.value })} />
+        </Field>
         <Field label="Manufacturer">
           <input list="manufacturers" value={f.manufacturer} onChange={(e) => set({ manufacturer: e.target.value })} autoComplete="off" />
         </Field>
@@ -561,12 +564,9 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
       </fieldset>
 
       <fieldset>
-        <legend>Notes</legend>
+        <legend>Other</legend>
         <Field label="Photo / link">
           <input value={f.photoLink} onChange={(e) => set({ photoLink: e.target.value })} placeholder="Link to a photo, for now" />
-        </Field>
-        <Field label="Notes">
-          <textarea rows={3} value={f.notes} onChange={(e) => set({ notes: e.target.value })} />
         </Field>
         <label className="toggle">
           <input type="checkbox" checked={f.needsDetails} onChange={(e) => set({ needsDetails: e.target.checked })} />
