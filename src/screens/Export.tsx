@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
-import { COLUMN_HINTS, DEFAULT_EXPORT_COLUMNS, buildExport, loadColumns, toCsv, type ExportColumn, type ExportOptions } from "../domain/export";
+import { COLUMN_HINTS, DEFAULT_EXPORT_COLUMNS, EXPORT_LAYOUT, buildExport, loadColumns, toCsv, type ExportColumn, type ExportOptions } from "../domain/export";
 import { buildXlsx } from "../domain/xlsx";
 import { useSync } from "../sync/SyncProvider";
 import { ago } from "../sync/SyncBar";
@@ -13,6 +13,7 @@ const DEFAULT_OPTS: ExportOptions = { keptOnly: true, numberedOnly: true, skipZe
 const PREVIEW_ROWS = 5;
 
 interface Saved {
+  layout: number; // which default layout the saved columns were based on
   columns: ExportColumn[];
   opts: ExportOptions;
 }
@@ -21,7 +22,8 @@ function readSaved(v: unknown): Saved {
   const s = (v ?? {}) as Partial<Saved>;
   const o = (s.opts ?? {}) as Partial<ExportOptions>;
   return {
-    columns: loadColumns(s.columns),
+    layout: EXPORT_LAYOUT,
+    columns: loadColumns(s.columns, s.layout),
     opts: {
       keptOnly: typeof o.keptOnly === "boolean" ? o.keptOnly : DEFAULT_OPTS.keptOnly,
       numberedOnly: typeof o.numberedOnly === "boolean" ? o.numberedOnly : DEFAULT_OPTS.numberedOnly,

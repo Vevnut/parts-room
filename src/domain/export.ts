@@ -24,12 +24,12 @@ export const COLUMN_HINTS: Record<ColumnKey, string> = {
   qty: "Quantity",
   unitCost: "Unit cost",
   retailPrice: "Retail price",
-  bin: "Bin code",
+  bin: "New bin code",
   minQty: "Min qty",
   reorderQty: "Reorder qty",
   condition: "Condition",
   partId: "This app's Part ID (MP-####)",
-  notes: "Notes",
+  notes: "Description (the part's notes)",
   oldLocation: "Old location",
   lastCounted: "Last counted (YYYY-MM-DD)",
   system: "Main system",
@@ -38,29 +38,33 @@ export const COLUMN_HINTS: Record<ColumnKey, string> = {
 };
 
 export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: "system", header: "System", enabled: true },
+  { key: "subsystem", header: "Sub-system", enabled: true },
   { key: "mfrPartNumber", header: "Part Number", enabled: true },
-  { key: "supplier", header: "Supplier", enabled: true },
+  { key: "name", header: "Part Name", enabled: true },
+  { key: "notes", header: "Description", enabled: true },
   { key: "manufacturer", header: "Manufacturer", enabled: true },
-  { key: "name", header: "Description", enabled: true },
-  { key: "qty", header: "Qty On Hand", enabled: true },
-  { key: "unitCost", header: "Cost", enabled: true },
-  { key: "retailPrice", header: "List Price", enabled: true },
-  { key: "bin", header: "Bin Location", enabled: true },
-  { key: "minQty", header: "Min Qty", enabled: true },
-  { key: "reorderQty", header: "Reorder Qty", enabled: true },
-  { key: "condition", header: "Condition", enabled: true },
-  { key: "partId", header: "Internal ID", enabled: true },
-  { key: "notes", header: "Notes", enabled: true },
+  { key: "qty", header: "Quantity", enabled: true },
+  { key: "partId", header: "Part ID", enabled: true },
+  { key: "stagingSpot", header: "Container Spot", enabled: true },
+  { key: "bin", header: "New Bin", enabled: true },
+  { key: "retailPrice", header: "Retail Price", enabled: true },
+  { key: "unitCost", header: "Cost", enabled: false },
+  { key: "supplier", header: "Supplier", enabled: false },
+  { key: "condition", header: "Condition", enabled: false },
   { key: "oldLocation", header: "Old Location", enabled: false },
+  { key: "minQty", header: "Min Qty", enabled: false },
+  { key: "reorderQty", header: "Reorder Qty", enabled: false },
   { key: "lastCounted", header: "Last Counted", enabled: false },
-  { key: "system", header: "Category", enabled: false },
-  { key: "subsystem", header: "Sub-category", enabled: false },
-  { key: "stagingSpot", header: "Container Spot", enabled: false },
 ];
 
+// Bump when the default layout changes, so column settings saved under an older layout are
+// replaced by the new defaults instead of hiding the change.
+export const EXPORT_LAYOUT = 2;
+
 /** Reads saved column settings, repairing anything missing or unknown. */
-export function loadColumns(saved: unknown): ExportColumn[] {
-  if (!Array.isArray(saved)) return DEFAULT_EXPORT_COLUMNS.map((c) => ({ ...c }));
+export function loadColumns(saved: unknown, layout: unknown): ExportColumn[] {
+  if (!Array.isArray(saved) || layout !== EXPORT_LAYOUT) return DEFAULT_EXPORT_COLUMNS.map((c) => ({ ...c }));
   const byKey = new Map(DEFAULT_EXPORT_COLUMNS.map((c) => [c.key, c]));
   const out: ExportColumn[] = [];
   for (const s of saved) {

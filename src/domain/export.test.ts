@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_EXPORT_COLUMNS, buildExport, loadColumns, toCsv, type ExportColumn } from "./export";
+import { DEFAULT_EXPORT_COLUMNS, EXPORT_LAYOUT, buildExport, loadColumns, toCsv, type ExportColumn } from "./export";
 import type { Bin, Part } from "./rules";
 
 let n = 0;
@@ -14,24 +14,39 @@ function part(over: Partial<Part> = {}): Part {
 }
 const bin = { id: "b1", binCode: "A-01-03", deletedAt: null } as Bin;
 const defaults = { keptOnly: true, numberedOnly: true, skipZeroQty: false };
+const systems = [
+  { id: "m", name: "MERCURY (M01)", sortOrder: 1, active: true, parentId: null },
+  { id: "c", name: "Cooling (01)", sortOrder: 2, active: true, parentId: "m" },
+];
+const col = (key: ExportColumn["key"]) => DEFAULT_EXPORT_COLUMNS.filter((c) => c.enabled).findIndex((c) => c.key === key);
 
 describe("Lightspeed export rows", () => {
-  it("maps each part to the default columns, text stays text and numbers stay numbers", () => {
+  it("lays out the default columns in order, text stays text and numbers stay numbers", () => {
     const p = part({
-      name: "Water pump impeller", mfrPartNumber: " 0047-43026Q06 ", manufacturer: "Mercury", supplier: "", qty: 3,
-      unitCost: 28.5, retailPrice: 42, binId: "b1", minQty: 2, reorderQty: 4, condition: "New", notes: "Box 2",
+      name: "Water pump impeller", mfrPartNumber: " 0047-43026Q06 ", manufacturer: "Mercury", supplier: "", qty: 3, systemId: "c",
+      unitCost: 28.5, retailPrice: 42, binId: "b1", minQty: 2, reorderQty: 4, condition: "New", notes: "Box 2", stagingSpot: "Container 2",
     });
-    const out = buildExport([p], [bin], DEFAULT_EXPORT_COLUMNS, defaults);
-    expect(out.header).toEqual(["Part Number", "Supplier", "Manufacturer", "Description", "Qty On Hand", "Cost", "List Price", "Bin Location", "Min Qty", "Reorder Qty", "Condition", "Internal ID", "Notes"]);
-    expect(out.rows).toEqual([["0047-43026Q06", "Mercury", "Mercury", "Water pump impeller", 3, 28.5, 42, "A-01-03", 2, 4, "New", p.partId, "Box 2"]]);
+    const out = buildExport([p], [bin], DEFAULT_EXPORT_COLUMNS, defaults, systems);
+    expect(out.header).toEqual([
+      "System", "Sub-system", "Part Number", "Part Name", "Description", "Manufacturer", "Quantity", "Part ID", "Container Spot", "New Bin", "Retail Price",
+    ]);
+    expect(out.rows).toEqual([["MERCURY (M01)", "Cooling (01)", "0047-43026Q06", "Water pump impeller", "Box 2", "Mercury", 3, p.partId, "Container 2", "A-01-03", 42]]);
+  });
+
+  it("keeps the other columns available but switched off", () => {
+    expect(DEFAULT_EXPORT_COLUMNS.filter((c) => !c.enabled).map((c) => c.key)).toEqual([
+      "unitCost", "supplier", "condition", "oldLocation", "minQty", "reorderQty", "lastCounted",
+    ]);
   });
 
   it("uses the supplier when one is set, and leaves blanks for unknown values", () => {
     const p = part({ supplier: "MER", manufacturer: "Mercury", unitCost: null, binId: "gone" });
-    const [row] = buildExport([p], [bin], DEFAULT_EXPORT_COLUMNS, defaults).rows;
-    expect(row[1]).toBe("MER");
-    expect(row[5]).toBeNull();
-    expect(row[7]).toBe("");
+    const cols: ExportColumn[] = [
+      { key: "supplier", header: "Supplier", enabled: true },
+      { key: "unitCost", header: "Cost", enabled: true },
+      { key: "bin", header: "Bin", enabled: true },
+    ];
+    expect(buildExport([p], [bin], cols, defaults).rows).toEqual([["MER", null, ""]]);
   });
 
   it("leaves out deleted, not-kept and unnumbered parts and counts why", () => {
@@ -46,7 +61,7 @@ describe("Lightspeed export rows", () => {
       part({ name: "none left", qty: 0 }),
     ];
     const out = buildExport(parts, [], DEFAULT_EXPORT_COLUMNS, defaults);
-    expect(out.rows.map((r) => r[3]).sort()).toEqual(["blank disposition counts as kept", "keep", "none left", "unknown counts as kept"]);
+    expect(out.rows.map((r) => r[col("name")]).sort()).toEqual(["blank disposition counts as kept", "keep", "none left", "unknown counts as kept"]);
     expect(out.skipped).toEqual({ notKept: 2, noNumber: 1, zeroQty: 0 });
 
     const all = buildExport(parts, [], DEFAULT_EXPORT_COLUMNS, { keptOnly: false, numberedOnly: false, skipZeroQty: true });
@@ -56,7 +71,7 @@ describe("Lightspeed export rows", () => {
 
   it("sorts by part number so the sheet is easy to check against Lightspeed", () => {
     const out = buildExport([part({ mfrPartNumber: "b-2" }), part({ mfrPartNumber: "A-10" }), part({ mfrPartNumber: "A-9" })], [], DEFAULT_EXPORT_COLUMNS, defaults);
-    expect(out.rows.map((r) => r[0])).toEqual(["A-9", "A-10", "b-2"]);
+    expect(out.rows.map((r) => r[col("mfrPartNumber")])).toEqual(["A-9", "A-10", "b-2"]);
   });
 
   it("follows the chosen columns, order and header names", () => {
@@ -69,12 +84,27 @@ describe("Lightspeed export rows", () => {
     expect(out.header).toEqual(["OnHand", "PartNo"]);
     expect(out.rows).toEqual([[2, "X1"]]);
   });
+
+  it("fills the main system and sub-system columns, blank when there's none", () => {
+    const cols: ExportColumn[] = [
+      { key: "mfrPartNumber", header: "PN", enabled: true },
+      { key: "system", header: "Category", enabled: true },
+      { key: "subsystem", header: "Sub", enabled: true },
+    ];
+    const out = buildExport([part({ mfrPartNumber: "A", systemId: "c" }), part({ mfrPartNumber: "B", systemId: "m" }), part({ mfrPartNumber: "C" })], [], cols, defaults, systems);
+    expect(out.rows).toEqual([["A", "MERCURY (M01)", "Cooling (01)"], ["B", "MERCURY (M01)", ""], ["C", "", ""]]);
+  });
 });
 
 describe("saved column settings", () => {
   it("falls back to the defaults for missing or broken settings", () => {
-    expect(loadColumns(undefined)).toEqual(DEFAULT_EXPORT_COLUMNS);
-    expect(loadColumns("nonsense")).toEqual(DEFAULT_EXPORT_COLUMNS);
+    expect(loadColumns(undefined, EXPORT_LAYOUT)).toEqual(DEFAULT_EXPORT_COLUMNS);
+    expect(loadColumns("nonsense", EXPORT_LAYOUT)).toEqual(DEFAULT_EXPORT_COLUMNS);
+  });
+  it("replaces columns saved under an older layout with the current defaults", () => {
+    const old = [{ key: "qty", header: "Qty On Hand", enabled: true }];
+    expect(loadColumns(old, undefined)).toEqual(DEFAULT_EXPORT_COLUMNS);
+    expect(loadColumns(old, EXPORT_LAYOUT - 1)).toEqual(DEFAULT_EXPORT_COLUMNS);
   });
   it("keeps the saved order and names, drops unknown keys, appends new columns switched off", () => {
     const saved = [
@@ -82,7 +112,7 @@ describe("saved column settings", () => {
       { key: "bogus", header: "x", enabled: true },
       { key: "mfrPartNumber", header: "", enabled: true },
     ];
-    const cols = loadColumns(saved);
+    const cols = loadColumns(saved, EXPORT_LAYOUT);
     expect(cols.slice(0, 2)).toEqual([
       { key: "qty", header: "OnHand", enabled: true },
       { key: "mfrPartNumber", header: "Part Number", enabled: true },
@@ -99,29 +129,5 @@ describe("CSV", () => {
   });
   it("defuses text that a spreadsheet would run as a formula", () => {
     expect(toCsv(["A"], [["=HYPERLINK(1)"], ["+1"], ["@x"], ["-12"]])).toBe("﻿A\r\n'=HYPERLINK(1)\r\n'+1\r\n'@x\r\n-12\r\n");
-  });
-});
-
-describe("system columns", () => {
-  it("can add the main system and sub-system as columns", () => {
-    const systems = [
-      { id: "m", name: "MERCURY (M01)", sortOrder: 1, active: true, parentId: null },
-      { id: "wp", name: "Water pumps", sortOrder: 2, active: true, parentId: "m" },
-    ];
-    const cols: ExportColumn[] = [
-      { key: "mfrPartNumber", header: "PN", enabled: true },
-      { key: "system", header: "Category", enabled: true },
-      { key: "subsystem", header: "Sub", enabled: true },
-    ];
-    const out = buildExport([part({ mfrPartNumber: "A", systemId: "wp" }), part({ mfrPartNumber: "B", systemId: "m" }), part({ mfrPartNumber: "C" })], [], cols, defaults, systems);
-    expect(out.rows).toEqual([["A", "MERCURY (M01)", "Water pumps"], ["B", "MERCURY (M01)", ""], ["C", "", ""]]);
-  });
-  it("can add the container spot as a column, switched off by default", () => {
-    const out = buildExport([part({ mfrPartNumber: "A", stagingSpot: "Container 2" }), part({ mfrPartNumber: "B" })], [], [{ key: "stagingSpot", header: "Spot", enabled: true }], defaults);
-    expect(out.rows).toEqual([["Container 2"], [""]]);
-    expect(DEFAULT_EXPORT_COLUMNS.find((c) => c.key === "stagingSpot")?.enabled).toBe(false);
-  });
-  it("adds the system columns switched off by default", () => {
-    expect(DEFAULT_EXPORT_COLUMNS.filter((c) => c.key === "system" || c.key === "subsystem").map((c) => c.enabled)).toEqual([false, false]);
   });
 });
