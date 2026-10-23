@@ -175,6 +175,8 @@ export function BinDetail() {
   const binCode = decodeURIComponent(code).trim().toUpperCase();
   const bin = useLiveQuery(async () => (await db.bins.where("binKey").equals(binCode).first()) ?? null, [binCode]);
   const parts = useParts();
+  const systems = useSystems();
+  const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
   const toast = useToast();
   const [error, setError] = useState("");
 
@@ -264,6 +266,7 @@ export function BinDetail() {
               <Link to={`/parts/${p.id}`} className="part-main">
                 <span className="part-name">{p.name}</span>
                 <span className="part-meta">
+                  {idx.code(p.systemId, p.mfrPartNumber) && <span className="mono part-code">{idx.code(p.systemId, p.mfrPartNumber)}</span>}
                   <span className="mono">{p.partId}</span>
                   <span>Qty {fmtQty(p.qty)}</span>
                 </span>
@@ -366,8 +369,8 @@ export function NeedsBin() {
                 <span className="part-main">
                   <span className="part-name">{p.name}</span>
                   <span className="part-meta">
+                    {idx.code(p.systemId, p.mfrPartNumber) && <span className="mono part-code">{idx.code(p.systemId, p.mfrPartNumber)}</span>}
                     <span className="mono">{p.partId}</span>
-                    {p.systemId && <span>{idx.label(p.systemId)}</span>}
                     <span>Qty {fmtQty(p.qty)}</span>
                     {p.oldLocation && <span>was: {p.oldLocation}</span>}
                   </span>
@@ -394,6 +397,8 @@ export function NeedsBin() {
 // Assigned but not yet physically in the bin, grouped by bin.
 export function Staged() {
   const parts = useParts();
+  const systems = useSystems();
+  const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
   const bins = useBins();
   const toast = useToast();
   const groups = useMemo(() => {
@@ -436,6 +441,7 @@ export function Staged() {
                 <Link to={`/parts/${p.id}`} className="part-main">
                   <span className="part-name">{p.name}</span>
                   <span className="part-meta">
+                    {idx.code(p.systemId, p.mfrPartNumber) && <span className="mono part-code">{idx.code(p.systemId, p.mfrPartNumber)}</span>}
                     <span className="mono">{p.partId}</span>
                     <span>Qty {fmtQty(p.qty)}</span>
                   </span>

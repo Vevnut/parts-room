@@ -215,10 +215,9 @@ export function PartsList() {
                 <div className="part-main">
                   <span className="part-name">{p.name}</span>
                   <span className="part-meta">
+                    {idx.code(p.systemId, p.mfrPartNumber) && <span className="mono part-code">{idx.code(p.systemId, p.mfrPartNumber)}</span>}
                     <span className="mono">{p.partId}</span>
                     {p.manufacturer && <span>{p.manufacturer}</span>}
-                    {p.mfrPartNumber && <span className="mono">{p.mfrPartNumber}</span>}
-                    {p.systemId && <span>{idx.label(p.systemId)}</span>}
                   </span>
                   <span className="chips">
                     <StatusChip part={p} />
@@ -403,7 +402,10 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
     <form className="screen" onSubmit={save} noValidate>
       <header className="screen-head">
         <div className="row-between">
-          <h1>{part ? part.partId : "New part"}</h1>
+          <h1>
+            {part ? part.partId : "New part"}
+            {idx.code(f.systemId, f.mfrPartNumber) && <span className="mono part-code block">{idx.code(f.systemId, f.mfrPartNumber)}</span>}
+          </h1>
           {part && (
             <button type="button" className="btn small" onClick={() => void duplicate()}>
               Duplicate

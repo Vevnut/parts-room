@@ -46,6 +46,21 @@ describe("system index", () => {
     expect(idx.within(null, "mercury-m01")).toBe(false);
   });
 
+  it("builds a part code from the system codes in brackets and the mfr part number", () => {
+    const withCodes = indexSystems([
+      sys("mercury-m01", "MERCURY (M01)", 1),
+      sys("01", "Cooling (01)", 2, { parentId: "mercury-m01" }),
+      sys("plain", "Belts", 3),
+      sys("plain-sub", "V-belts", 4, { parentId: "plain" }),
+    ]);
+    expect(withCodes.code("01", " 47-8M0137219 ")).toBe("M01-01-47-8M0137219");
+    expect(withCodes.code("mercury-m01", "47-8M0137219")).toBe("M01-47-8M0137219");
+    expect(withCodes.code("plain-sub", "7420")).toBe("Belts-V-belts-7420"); // no code in brackets: the name
+    expect(withCodes.code(null, "7420")).toBe("7420");
+    expect(withCodes.code("01", "")).toBe("M01-01");
+    expect(withCodes.code(null, "  ")).toBe("");
+  });
+
   it("builds a picker list of main systems each followed by their sub-systems", () => {
     expect(idx.options().map((o) => o.label)).toEqual([
       "PLUMBING (S02)",
