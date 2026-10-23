@@ -279,3 +279,18 @@ a.syncbar, button.syncbar { cursor: pointer; min-height: 44px; }
 .tabbar a.on { color: var(--navy-ink); border-top-color: var(--label); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* barcode scanner */
+.input-with-btn { display: flex; gap: 8px; }
+.input-with-btn > input { flex: 1; min-width: 0; }
+.scan-btn { flex: 0 0 auto; min-width: 72px; }
+.scanner {
+  position: fixed; inset: 0; z-index: 50; background: #000; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+}
+.scanner-frame { position: relative; width: 100%; max-width: 560px; aspect-ratio: 4 / 3; background: #111; border-radius: var(--radius); overflow: hidden; }
+.scanner-frame video { width: 100%; height: 100%; object-fit: cover; }
+.scanner-guide { position: absolute; left: 10%; right: 10%; top: 32%; bottom: 32%; border: 3px solid #fff; border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35); }
+.scanner-text { max-width: 560px; text-align: center; margin: 0; }
+.scanner .btn { min-width: 200px; }

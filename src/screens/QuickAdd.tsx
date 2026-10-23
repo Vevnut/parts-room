@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { addPhoto, adjustQty, quickAdd, suggestPartId } from "../db/repo";
 import { PhotoPicker, type ShrunkPhoto } from "./Photos";
+import { ScanButton, UPC_NOTE } from "./Scanner";
 import { db } from "../db/db";
 import { DISPOSITIONS, MANUFACTURERS, type Part } from "../domain/rules";
 import { blankQuickAdd, nextQuickAddForm, type QuickAddForm } from "../domain/quickAdd";
@@ -53,6 +54,7 @@ export default function QuickAdd() {
   // Photos taken before saving; attached to the part when it's saved. Not kept across reloads.
   const [pendingPhotos, setPendingPhotos] = useState<ShrunkPhoto[]>([]);
   const [error, setError] = useState("");
+  const [scanNote, setScanNote] = useState(""); // set when a scan looks like a UPC rather than a part number
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
@@ -80,6 +82,7 @@ export default function QuickAdd() {
       setPendingPhotos([]);
       setLast({ id: p.id, partId: p.partId, name: p.name, detail: [p.manufacturer, p.mfrPartNumber].filter(Boolean).join(" · ") });
       draft.reset(nextQuickAddForm(f)); // system, manufacturer and old location stay for the next part
+      setScanNote("");
       setError("");
       toast(`Saved ${p.partId}`);
       nameRef.current?.focus();
@@ -99,6 +102,7 @@ export default function QuickAdd() {
       setPendingPhotos([]);
       setLast({ id: p.id, partId: p.partId, name: p.name, detail: `added ${fmtQty(f.qty)}, now ${fmtQty(qty)}` });
       draft.reset(nextQuickAddForm(f));
+      setScanNote("");
       setError("");
       toast(`Added ${fmtQty(f.qty)} to ${p.partId}`);
       nameRef.current?.focus();
@@ -163,28 +167,36 @@ export default function QuickAdd() {
         />
       </Field>
 
-      {(showMfr || showPartNo) && (
-        <div className="grid2">
-          {showMfr && (
-            <Field label="Manufacturer">
-              <input id="qa-mfr" list="qa-mfrs" value={f.manufacturer} onChange={(e) => set({ manufacturer: e.target.value })} placeholder="e.g. OMC" autoComplete="off" />
-            </Field>
-          )}
-          {showPartNo && (
-            <Field label="Part number">
-              <input
-                id="qa-partno"
-                value={f.mfrPartNumber}
-                onChange={(e) => set({ mfrPartNumber: e.target.value })}
-                placeholder="e.g. 0388xxx"
-                autoCapitalize="characters"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-              />
-            </Field>
-          )}
-        </div>
+      {showPartNo && (
+        <Field label="Part number" hint={scanNote || undefined}>
+          <span className="input-with-btn">
+            <input
+              id="qa-partno"
+              value={f.mfrPartNumber}
+              onChange={(e) => {
+                setScanNote("");
+                set({ mfrPartNumber: e.target.value });
+              }}
+              placeholder="e.g. 0388xxx"
+              autoCapitalize="characters"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <ScanButton
+              onScan={(r) => {
+                set({ mfrPartNumber: r.value });
+                setScanNote(r.upc ? UPC_NOTE : "");
+                toast(`Scanned ${r.value}`);
+              }}
+            />
+          </span>
+        </Field>
+      )}
+      {showMfr && (
+        <Field label="Manufacturer">
+          <input id="qa-mfr" list="qa-mfrs" value={f.manufacturer} onChange={(e) => set({ manufacturer: e.target.value })} placeholder="e.g. OMC" autoComplete="off" />
+        </Field>
       )}
       {matches.length > 0 && (
         <div className="notice dup" role="status">

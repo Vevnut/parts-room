@@ -8,6 +8,7 @@ import { distinctOptions, filterParts, manufacturerOptions, samePartNumber } fro
 import { indexSystems } from "../domain/systems";
 import { PartPhotos } from "./Photos";
 import BulkEdit from "./BulkEdit";
+import { ScanButton, UPC_NOTE } from "./Scanner";
 import {
   CONDITIONS,
   DISPOSITIONS,
@@ -397,6 +398,7 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
   const bins = useBins();
   const allParts = useParts();
   const sameNumber = useMemo(() => samePartNumber(allParts ?? [], f.mfrPartNumber, part?.id), [allParts, f.mfrPartNumber, part?.id]);
+  const [scanNote, setScanNote] = useState(""); // set when a scan looks like a UPC rather than a part number
   const systems = useSystems();
   // f.systemId holds the sub-system when one is picked, otherwise the main system.
   const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
@@ -532,8 +534,24 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
             </select>
           </Field>
         )}
-        <Field label="Part number">
-          <input value={f.mfrPartNumber} onChange={(e) => set({ mfrPartNumber: e.target.value })} autoCapitalize="characters" autoComplete="off" />
+        <Field label="Part number" hint={scanNote || undefined}>
+          <span className="input-with-btn">
+            <input
+              value={f.mfrPartNumber}
+              onChange={(e) => {
+                setScanNote("");
+                set({ mfrPartNumber: e.target.value });
+              }}
+              autoCapitalize="characters"
+              autoComplete="off"
+            />
+            <ScanButton
+              onScan={(r) => {
+                set({ mfrPartNumber: r.value });
+                setScanNote(r.upc ? UPC_NOTE : "");
+              }}
+            />
+          </span>
         </Field>
         {sameNumber.length > 0 && (
           <p className="notice">
