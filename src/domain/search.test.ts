@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distinctOptions, filterParts, manufacturerOptions, type PartFilters } from "./search";
+import { distinctOptions, filterParts, manufacturerOptions, oldBins, type PartFilters } from "./search";
 import type { Part } from "./rules";
 
 let n = 0;
@@ -82,5 +82,22 @@ describe("manufacturerOptions", () => {
   });
   it("leaves out parts with no manufacturer", () => {
     expect(manufacturerOptions(all).some((o) => o.label === "")).toBe(false);
+  });
+});
+
+describe("old bins", () => {
+  it("groups parts by old location with part, unit and value totals, ignoring case and blanks", () => {
+    const ps = [
+      part({ oldLocation: "MERC MISC 1", qty: 2, retailPrice: 10 }),
+      part({ oldLocation: " merc  misc 1", qty: 3, retailPrice: null }),
+      part({ oldLocation: "Shelf 10", qty: 1, retailPrice: 5 }),
+      part({ oldLocation: "Shelf 2", qty: 4 }),
+      part({ oldLocation: "" }),
+    ];
+    expect(oldBins(ps)).toEqual([
+      { value: "merc misc 1", label: "MERC MISC 1", parts: 2, units: 5, retail: 20, unpriced: 1 },
+      { value: "shelf 2", label: "Shelf 2", parts: 1, units: 4, retail: 0, unpriced: 1 },
+      { value: "shelf 10", label: "Shelf 10", parts: 1, units: 1, retail: 5, unpriced: 0 },
+    ]);
   });
 });

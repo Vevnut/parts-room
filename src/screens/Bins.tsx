@@ -1,15 +1,17 @@
-// Bins, the bin page a QR label will open, and the two move-back queues.
+// Bins (plus the old-room "old bins"), the bin page a QR label will open, and the two move-back queues.
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import { assignBin, deleteBin, putAwayBin, saveBin, setMovedBack } from "../db/repo";
 import { binStats, placementOf, type Bin } from "../domain/rules";
-import { BinLabel, Choice, ConfirmButton, Field, StatusChip, fmtQty, useBins, useParts, useSystems, useToast } from "../ui";
+import { oldBins } from "../domain/search";
+import { BinLabel, Choice, ConfirmButton, Field, StatusChip, fmtMoney, fmtQty, useBins, useParts, useSystems, useToast } from "../ui";
 
 export function BinsList() {
   const bins = useBins();
   const parts = useParts();
+  const old = useMemo(() => oldBins(parts ?? []), [parts]);
   return (
     <div className="screen">
       <header className="screen-head row-between">
@@ -55,6 +57,36 @@ export function BinsList() {
           );
         })}
       </ul>
+
+      {old.length > 0 && (
+        <section className="stack">
+          <h2>Old bins</h2>
+          <p className="sub">Where parts came from, from the Old location on each part. Tap one to see its parts.</p>
+          <ul className="list">
+            {old.map((o) => (
+              <li key={o.value}>
+                <Link to={`/parts?loc=${encodeURIComponent(o.value)}`} className="part-row">
+                  <div className="part-main">
+                    <span className="part-name">{o.label}</span>
+                    <span className="part-meta">
+                      {o.retail > 0 ? `${fmtMoney(o.retail)} at retail` : "No prices yet"}
+                      {o.retail > 0 && o.unpriced > 0 ? ` · ${o.unpriced} without a price` : ""}
+                    </span>
+                  </div>
+                  <div className="part-side stats-mini">
+                    <span>
+                      <b>{o.parts}</b> parts
+                    </span>
+                    <span>
+                      <b>{fmtQty(o.units)}</b> units
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

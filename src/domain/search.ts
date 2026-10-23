@@ -70,3 +70,27 @@ export function distinctOptions(parts: Part[], field: "manufacturer" | "oldLocat
 }
 
 export const manufacturerOptions = (parts: Part[]) => distinctOptions(parts, "manufacturer");
+
+export interface OldBin {
+  value: string; // matches the Parts screen's "loc" filter
+  label: string;
+  parts: number;
+  units: number;
+  retail: number; // qty × retail price, priced parts only
+  unpriced: number;
+}
+
+/** Parts grouped by where they were in the old room ("old bins"), in label order. */
+export function oldBins(parts: Part[]): OldBin[] {
+  return distinctOptions(parts, "oldLocation").map((o) => {
+    const inBin = parts.filter((p) => norm(p.oldLocation) === o.value);
+    return {
+      value: o.value,
+      label: o.label,
+      parts: inBin.length,
+      units: inBin.reduce((s, p) => s + p.qty, 0),
+      retail: inBin.reduce((s, p) => s + (p.retailPrice == null ? 0 : p.qty * p.retailPrice), 0),
+      unpriced: inBin.filter((p) => p.retailPrice == null).length,
+    };
+  });
+}
