@@ -432,12 +432,6 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
 
       <fieldset>
         <legend>Basics</legend>
-        <Field label="Part ID" error={errors.partId} hint="Used later as the Lightspeed SKU">
-          <input value={f.partId} onChange={(e) => set({ partId: e.target.value })} autoCapitalize="characters" autoComplete="off" />
-        </Field>
-        <Field label="Part name" error={errors.name}>
-          <input value={f.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" />
-        </Field>
         <Field label="System">
           <select value={mainId ?? ""} onChange={(e) => set({ systemId: e.target.value || null })}>
             <option value="">— None —</option>
@@ -464,6 +458,20 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
             </select>
           </Field>
         )}
+        <Field label="Part number">
+          <input value={f.mfrPartNumber} onChange={(e) => set({ mfrPartNumber: e.target.value })} autoCapitalize="characters" autoComplete="off" />
+        </Field>
+        <Field label="Part name" error={errors.name}>
+          <input value={f.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" />
+        </Field>
+        <Field label="Manufacturer">
+          <input list="manufacturers" value={f.manufacturer} onChange={(e) => set({ manufacturer: e.target.value })} autoComplete="off" />
+        </Field>
+        <datalist id="manufacturers">
+          {MANUFACTURERS.map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
         <div className="field">
           <span className="field-label">Qty on hand</span>
           <Stepper label="Qty on hand" value={f.qty} onChange={(qty) => set({ qty })} />
@@ -478,6 +486,9 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
           <span className="field-label">Condition</span>
           <Choice label="Condition" allowNone value={f.condition} onChange={(condition) => set({ condition })} options={CONDITIONS.map((c) => ({ value: c, label: c }))} />
         </div>
+        <Field label="Part ID" error={errors.partId} hint="Used later as the Lightspeed SKU">
+          <input value={f.partId} onChange={(e) => set({ partId: e.target.value })} autoCapitalize="characters" autoComplete="off" />
+        </Field>
       </fieldset>
 
       <fieldset>
@@ -531,17 +542,6 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
 
       <fieldset>
         <legend>Supplier &amp; pricing</legend>
-        <Field label="Manufacturer">
-          <input list="manufacturers" value={f.manufacturer} onChange={(e) => set({ manufacturer: e.target.value })} autoComplete="off" />
-        </Field>
-        <datalist id="manufacturers">
-          {MANUFACTURERS.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
-        <Field label="Mfr part #">
-          <input value={f.mfrPartNumber} onChange={(e) => set({ mfrPartNumber: e.target.value })} autoCapitalize="characters" autoComplete="off" />
-        </Field>
         <Field label="Supplier">
           <input value={f.supplier} onChange={(e) => set({ supplier: e.target.value })} autoComplete="off" />
         </Field>
