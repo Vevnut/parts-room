@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import { ValidationError, deletePart, duplicatePart, savePart, stripPart, suggestPartId } from "../db/repo";
-import { distinctOptions, filterParts, manufacturerOptions } from "../domain/search";
+import { distinctOptions, filterParts, manufacturerOptions, samePartNumber } from "../domain/search";
 import { indexSystems } from "../domain/systems";
 import { PartPhotos } from "./Photos";
 import {
@@ -323,6 +323,8 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
   const f = draft.value;
   const set = (patch: Partial<Form>) => draft.setValue({ ...f, ...patch });
   const bins = useBins();
+  const allParts = useParts();
+  const sameNumber = useMemo(() => samePartNumber(allParts ?? [], f.mfrPartNumber, part?.id), [allParts, f.mfrPartNumber, part?.id]);
   const systems = useSystems();
   // f.systemId holds the sub-system when one is picked, otherwise the main system.
   const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
@@ -461,6 +463,19 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
         <Field label="Part number">
           <input value={f.mfrPartNumber} onChange={(e) => set({ mfrPartNumber: e.target.value })} autoCapitalize="characters" autoComplete="off" />
         </Field>
+        {sameNumber.length > 0 && (
+          <p className="notice">
+            Also logged under this number:{" "}
+            {sameNumber.slice(0, 3).map((p, i) => (
+              <span key={p.id}>
+                {i > 0 && ", "}
+                <Link to={`/parts/${p.id}`}>
+                  {p.partId} (qty {fmtQty(p.qty)})
+                </Link>
+              </span>
+            ))}
+          </p>
+        )}
         <Field label="Part name" error={errors.name}>
           <input value={f.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" />
         </Field>

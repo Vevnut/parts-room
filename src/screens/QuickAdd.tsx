@@ -4,14 +4,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { addPhoto, quickAdd, suggestPartId } from "../db/repo";
+import { addPhoto, adjustQty, quickAdd, suggestPartId } from "../db/repo";
 import { PhotoPicker, type ShrunkPhoto } from "./Photos";
 import { db } from "../db/db";
-import { DISPOSITIONS, MANUFACTURERS } from "../domain/rules";
+import { DISPOSITIONS, MANUFACTURERS, type Part } from "../domain/rules";
 import { blankQuickAdd, nextQuickAddForm, type QuickAddForm } from "../domain/quickAdd";
-import { distinctOptions } from "../domain/search";
+import { distinctOptions, samePartNumber } from "../domain/search";
 import { indexSystems } from "../domain/systems";
-import { Choice, Field, Stepper, useDraft, useParts, useSystems, useToast } from "../ui";
+import { Choice, Field, Stepper, fmtQty, useDraft, useParts, useSystems, useToast } from "../ui";
 
 // Per-device preferences, not synced. Part number starts off; the other two start on.
 const FIELD_PREFS = [
@@ -46,6 +46,7 @@ export default function QuickAdd() {
   const subId = idx.subOf(f.systemId);
   const mainChoices = idx.mains.filter((s) => s.active || s.id === mainId);
   const subChoices = mainId ? idx.subs(mainId).filter((s) => s.active || s.id === subId) : [];
+  const matches = useMemo(() => (showPartNo ? samePartNumber(parts ?? [], f.mfrPartNumber) : []), [parts, f.mfrPartNumber, showPartNo]);
   const mfrSuggestions = [...new Set([...MANUFACTURERS, ...distinctOptions(parts ?? [], "manufacturer").map((o) => o.label)])].sort();
   const locSuggestions = distinctOptions(parts ?? [], "oldLocation").map((o) => o.label);
   const [last, setLast] = useState<{ id: string; partId: string; name: string; detail: string } | null>(null);
@@ -81,6 +82,25 @@ export default function QuickAdd() {
       draft.reset(nextQuickAddForm(f)); // system, manufacturer and old location stay for the next part
       setError("");
       toast(`Saved ${p.partId}`);
+      nameRef.current?.focus();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Adds this count (and any photos) to a part already logged under the same number.
+  async function addTo(p: Part) {
+    setSaving(true);
+    try {
+      const qty = await adjustQty(p.id, f.qty);
+      for (const ph of pendingPhotos) await addPhoto(p.id, ph.data, ph.mime, ph.width, ph.height);
+      setPendingPhotos([]);
+      setLast({ id: p.id, partId: p.partId, name: p.name, detail: `added ${fmtQty(f.qty)}, now ${fmtQty(qty)}` });
+      draft.reset(nextQuickAddForm(f));
+      setError("");
+      toast(`Added ${fmtQty(f.qty)} to ${p.partId}`);
       nameRef.current?.focus();
     } catch (err) {
       setError((err as Error).message);
@@ -164,6 +184,31 @@ export default function QuickAdd() {
               />
             </Field>
           )}
+        </div>
+      )}
+      {matches.length > 0 && (
+        <div className="notice dup" role="status">
+          <b>Already logged under this part number:</b>
+          <ul className="dup-list">
+            {matches.slice(0, 3).map((p) => (
+              <li key={p.id}>
+                <span>
+                  <span className="mono">{p.partId}</span> {p.name} · qty {fmtQty(p.qty)}
+                  {p.systemId ? ` · ${idx.label(p.systemId)}` : ""}
+                  {p.oldLocation ? ` · ${p.oldLocation}` : ""}
+                </span>
+                <span className="actions-row">
+                  <button type="button" className="btn small primary" disabled={saving} onClick={() => void addTo(p)}>
+                    Add {fmtQty(f.qty)} to {p.partId}
+                  </button>
+                  <Link to={`/parts/${p.id}`} className="btn small">
+                    Open
+                  </Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <small className="hint">Different lot or condition? Save it as its own part below.</small>
         </div>
       )}
       <datalist id="qa-mfrs">

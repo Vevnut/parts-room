@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distinctOptions, filterParts, manufacturerOptions, oldBins, type PartFilters } from "./search";
+import { distinctOptions, filterParts, manufacturerOptions, oldBins, samePartNumber, type PartFilters } from "./search";
 import type { Part } from "./rules";
 
 let n = 0;
@@ -110,5 +110,23 @@ describe("system filter with sub-systems", () => {
     const parentOf = (id: string) => (id === "water-pumps" ? "mercury-m01" : null);
     expect(names(filterParts([sub, main, other], { system: "mercury-m01" }, undefined, parentOf))).toEqual(["Sub part", "Main part"]);
     expect(names(filterParts([sub, main, other], { system: "water-pumps" }, undefined, parentOf))).toEqual(["Sub part"]);
+  });
+});
+
+describe("same part number", () => {
+  const a = part({ name: "Impeller kit", mfrPartNumber: "47-8M0137219" });
+  const b = part({ name: "Impeller kit (2nd lot)", mfrPartNumber: " 478m0137219 " });
+  const gone = part({ name: "Deleted", mfrPartNumber: "47-8M0137219", deletedAt: "2026-10-22T00:00:00.000Z" });
+  const other = part({ name: "Gasket", mfrPartNumber: "27-34897" });
+  const ps = [a, b, gone, other];
+
+  it("finds live parts with the same number, ignoring case, spaces and dashes", () => {
+    expect(names(samePartNumber(ps, "47-8m0137219"))).toEqual(["Impeller kit", "Impeller kit (2nd lot)"]);
+    expect(names(samePartNumber(ps, "47 8M0137219"))).toEqual(["Impeller kit", "Impeller kit (2nd lot)"]);
+  });
+  it("leaves out the part being edited, and matches nothing for a blank number", () => {
+    expect(names(samePartNumber(ps, "47-8M0137219", a.id))).toEqual(["Impeller kit (2nd lot)"]);
+    expect(samePartNumber(ps, "  ")).toEqual([]);
+    expect(samePartNumber(ps, "27-3489")).toEqual([]); // whole numbers only
   });
 });

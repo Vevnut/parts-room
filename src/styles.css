@@ -246,6 +246,8 @@ a.syncbar, button.syncbar { cursor: pointer; min-height: 44px; }
 .notice.bad { background: var(--bad-bg); color: var(--bad-ink); font-weight: 600; }
 .notice { background: var(--warn-bg); color: var(--warn-ink); border-radius: var(--radius); padding: 12px 14px; font-size: 15px; }
 .notice p { margin: 0 0 10px; }
+.dup-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dup-list li { display: flex; flex-direction: column; gap: 6px; }
 .saved { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--ok-bg); color: var(--ok-ink); border-radius: var(--radius); padding: 10px 14px; }
 .saved-id { display: block; font-family: var(--mono); font-size: 26px; font-weight: 800; }
 .saved-name { display: block; font-size: 14px; }

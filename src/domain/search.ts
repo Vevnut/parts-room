@@ -100,3 +100,13 @@ export function oldBins(parts: Part[]): OldBin[] {
     };
   });
 }
+
+// Part numbers match ignoring case, spaces, dashes and dots ("47-8M0137219" = "478m0137219").
+const partNumberKey = (s: string) => s.toUpperCase().replace(/[\s.-]+/g, "");
+
+/** Live parts already logged under this mfr part number, other than exceptId. */
+export function samePartNumber(parts: Part[], mfrPartNumber: string, exceptId?: string): Part[] {
+  const key = partNumberKey(mfrPartNumber);
+  if (!key) return [];
+  return parts.filter((p) => !p.deletedAt && p.id !== exceptId && partNumberKey(p.mfrPartNumber) === key);
+}
