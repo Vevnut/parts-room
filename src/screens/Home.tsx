@@ -1,6 +1,6 @@
 // Progress summary: the spreadsheet's Summary tab.
 import { Link } from "react-router-dom";
-import { reorderList, statusOf, summarize } from "../domain/rules";
+import { summarize } from "../domain/rules";
 import { fmtMoney, fmtQty, useParts, useSystems } from "../ui";
 
 export default function Home() {
@@ -10,10 +10,7 @@ export default function Home() {
 
   const s = summarize(parts, systems);
   const pct = Math.round(s.pctPutAway * 100);
-  const reorder = parts.filter((p) => statusOf(p) === "Reorder").length;
-  const out = parts.filter((p) => statusOf(p) === "Out of stock").length;
   const needsDetails = parts.filter((p) => p.needsDetails).length;
-  const reorderCost = reorderList(parts).totalCost;
 
   return (
     <div className="screen">
@@ -75,25 +72,16 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="tiles four">
+          <div className="tiles two">
             <div className="tile">
               <span className="k">Stock value</span>
               <span className="v small">{fmtMoney(s.stockValue)}</span>
             </div>
-            <Link to="/parts?status=Reorder" className={`tile link ${reorder ? "warn" : ""}`}>
-              <span className="k">Reorder</span>
-              <span className="v">{reorder}</span>
-            </Link>
-            <Link to="/parts?status=Out+of+stock" className={`tile link ${out ? "bad" : ""}`}>
-              <span className="k">Out of stock</span>
-              <span className="v">{out}</span>
-            </Link>
             <Link to="/parts?details=1" className="tile link">
               <span className="k">Needs details</span>
               <span className="v">{needsDetails}</span>
             </Link>
           </div>
-          {reorderCost > 0 && <p className="sub">Estimated reorder cost: {fmtMoney(reorderCost)}</p>}
 
           <section>
             <h2>By system (kept parts)</h2>
@@ -106,8 +94,6 @@ export default function Home() {
                     <th className="num">Units</th>
                     <th className="num">Value</th>
                     <th className="num">Needs bin</th>
-                    <th className="num">Reorder</th>
-                    <th className="num">Out</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -120,8 +106,6 @@ export default function Home() {
                       <td className="num">{fmtQty(r.units)}</td>
                       <td className="num">{fmtMoney(r.value)}</td>
                       <td className="num">{r.needsBin}</td>
-                      <td className="num">{r.reorder}</td>
-                      <td className="num">{r.outOfStock}</td>
                     </tr>
                   ))}
                 </tbody>

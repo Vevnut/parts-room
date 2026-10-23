@@ -29,7 +29,6 @@ import {
   fmtMoney,
   fmtQty,
   parseNum,
-  today,
   useBins,
   useDraft,
   useParts,
@@ -39,7 +38,8 @@ import {
 
 // ---------------- list ----------------
 
-const STATUSES = ["OK", "Reorder", "Out of stock", "Not kept"];
+// Stock levels and reordering are tracked in Lightspeed once parts move over, so no Reorder here.
+const STATUSES = ["OK", "Out of stock", "Not kept"];
 const PLACEMENTS = ["Needs bin", "Staged", "Put away"];
 const FILTER_KEYS = ["mfr", "loc", "system", "bin", "status", "placement", "disposition", "details", "noprice"];
 
@@ -515,32 +515,6 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
           <span>Moved back: it's physically in the bin</span>
         </label>
         {errors.movedBack && <small className="error">{errors.movedBack}</small>}
-      </fieldset>
-
-      <fieldset>
-        <legend>Stock &amp; reorder</legend>
-        <div className="grid2">
-          <Field label="Min qty" error={errors.minQty} hint="Reorder at or below">
-            <input inputMode="decimal" value={f.minQty} onChange={(e) => set({ minQty: e.target.value })} />
-          </Field>
-          <Field label="Reorder qty" error={errors.reorderQty}>
-            <input inputMode="decimal" value={f.reorderQty} onChange={(e) => set({ reorderQty: e.target.value })} />
-          </Field>
-        </div>
-        <div className="grid2">
-          <Field label="Last counted">
-            <input type="date" value={f.lastCounted} onChange={(e) => set({ lastCounted: e.target.value })} />
-          </Field>
-          <div className="field">
-            <span className="field-label">&nbsp;</span>
-            <button type="button" className="btn" onClick={() => set({ lastCounted: today() })}>
-              Counted today
-            </button>
-          </div>
-        </div>
-        <Field label="Replace by">
-          <input type="date" value={f.replaceBy} onChange={(e) => set({ replaceBy: e.target.value })} />
-        </Field>
       </fieldset>
 
       <fieldset>

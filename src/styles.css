@@ -160,6 +160,7 @@ input[type="checkbox"] { width: 28px; height: 28px; min-height: 0; flex-shrink: 
 .bar { height: 14px; border-radius: 999px; background: color-mix(in srgb, var(--navy-ink) 18%, transparent); overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--label); border-radius: 999px; transition: width 0.4s; }
 .tiles { display: grid; gap: 8px; }
+.tiles.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 520px) { .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
