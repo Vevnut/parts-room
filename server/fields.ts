@@ -58,6 +58,7 @@ export const FIELDS: Record<TableName, Record<string, FieldSpec>> = {
     name: text,
     sortOrder: { kind: "int" },
     active: { kind: "bool" },
+    parentId: { kind: "slug", nullable: true }, // set on sub-systems
   },
   // Metadata only; the image itself travels through /api/photo.
   photos: {

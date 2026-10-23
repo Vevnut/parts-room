@@ -101,3 +101,14 @@ describe("old bins", () => {
     ]);
   });
 });
+
+describe("system filter with sub-systems", () => {
+  it("includes a main system's sub-systems, and a sub-system shows only its own parts", () => {
+    const sub = part({ name: "Sub part", systemId: "water-pumps" });
+    const main = part({ name: "Main part", systemId: "mercury-m01" });
+    const other = part({ name: "Other", systemId: "honda-m02" });
+    const parentOf = (id: string) => (id === "water-pumps" ? "mercury-m01" : null);
+    expect(names(filterParts([sub, main, other], { system: "mercury-m01" }, undefined, parentOf))).toEqual(["Sub part", "Main part"]);
+    expect(names(filterParts([sub, main, other], { system: "water-pumps" }, undefined, parentOf))).toEqual(["Sub part"]);
+  });
+});

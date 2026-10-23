@@ -1,12 +1,14 @@
 // Builds the parts sheet for importing into Lightspeed DMS. Lightspeed doesn't publish one fixed
 // parts layout, so the columns can be switched on/off, reordered and renamed to match the import
 // template from Lightspeed; the choice is saved on the device.
-import { isKept, type Bin, type Part } from "./rules.js";
+import { isKept, type Bin, type Part, type System } from "./rules.js";
+import { indexSystems } from "./systems.js";
 import type { Cell } from "./xlsx.js";
 
 export type ColumnKey =
   | "mfrPartNumber" | "supplier" | "manufacturer" | "name" | "qty" | "unitCost" | "retailPrice"
-  | "bin" | "minQty" | "reorderQty" | "condition" | "partId" | "notes" | "oldLocation" | "lastCounted";
+  | "bin" | "minQty" | "reorderQty" | "condition" | "partId" | "notes" | "oldLocation" | "lastCounted"
+  | "system" | "subsystem";
 
 export interface ExportColumn {
   key: ColumnKey;
@@ -30,6 +32,8 @@ export const COLUMN_HINTS: Record<ColumnKey, string> = {
   notes: "Notes",
   oldLocation: "Old location",
   lastCounted: "Last counted (YYYY-MM-DD)",
+  system: "Main system",
+  subsystem: "Sub-system",
 };
 
 export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = [
@@ -48,6 +52,8 @@ export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = [
   { key: "notes", header: "Notes", enabled: true },
   { key: "oldLocation", header: "Old Location", enabled: false },
   { key: "lastCounted", header: "Last Counted", enabled: false },
+  { key: "system", header: "Category", enabled: false },
+  { key: "subsystem", header: "Sub-category", enabled: false },
 ];
 
 /** Reads saved column settings, repairing anything missing or unknown. */
@@ -77,8 +83,12 @@ export interface ExportResult {
   skipped: { notKept: number; noNumber: number; zeroQty: number };
 }
 
-function value(p: Part, key: ColumnKey, binCode: (id: string | null) => string): Cell {
+type Lookup = (id: string | null) => string;
+
+function value(p: Part, key: ColumnKey, binCode: Lookup, mainName: Lookup, subName: Lookup): Cell {
   switch (key) {
+    case "system": return mainName(p.systemId);
+    case "subsystem": return subName(p.systemId);
     case "mfrPartNumber": return p.mfrPartNumber.trim();
     case "supplier": return p.supplier.trim() || p.manufacturer.trim();
     case "manufacturer": return p.manufacturer.trim();
@@ -97,9 +107,12 @@ function value(p: Part, key: ColumnKey, binCode: (id: string | null) => string):
   }
 }
 
-export function buildExport(parts: Part[], bins: Bin[], columns: ExportColumn[], opts: ExportOptions): ExportResult {
+export function buildExport(parts: Part[], bins: Bin[], columns: ExportColumn[], opts: ExportOptions, systems: System[] = []): ExportResult {
   const codes = new Map(bins.filter((b) => !b.deletedAt).map((b) => [b.id, b.binCode]));
   const binCode = (id: string | null) => (id ? codes.get(id) ?? "" : "");
+  const idx = indexSystems(systems);
+  const mainName = (id: string | null) => idx.get(idx.mainOf(id))?.name ?? "";
+  const subName = (id: string | null) => idx.get(idx.subOf(id))?.name ?? "";
   const skipped = { notKept: 0, noNumber: 0, zeroQty: 0 };
   const chosen: Part[] = [];
   for (const p of parts) {
@@ -114,7 +127,7 @@ export function buildExport(parts: Part[], bins: Bin[], columns: ExportColumn[],
   const cols = columns.filter((c) => c.enabled);
   return {
     header: cols.map((c) => c.header),
-    rows: chosen.map((p) => cols.map((c) => value(p, c.key, binCode))),
+    rows: chosen.map((p) => cols.map((c) => value(p, c.key, binCode, mainName, subName))),
     skipped,
   };
 }

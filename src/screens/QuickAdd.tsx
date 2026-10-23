@@ -1,7 +1,7 @@
 // First-pass logging as parts come off the old shelves. Optional fields (part number,
 // manufacturer, old location) can be switched on per device; system, manufacturer and old
 // location carry over to the next part so a whole bin can be logged quickly.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { addPhoto, quickAdd, suggestPartId } from "../db/repo";
@@ -10,6 +10,7 @@ import { db } from "../db/db";
 import { DISPOSITIONS, MANUFACTURERS } from "../domain/rules";
 import { blankQuickAdd, nextQuickAddForm, type QuickAddForm } from "../domain/quickAdd";
 import { distinctOptions } from "../domain/search";
+import { indexSystems } from "../domain/systems";
 import { Choice, Field, Stepper, useDraft, useParts, useSystems, useToast } from "../ui";
 
 // Per-device preferences, not synced. Part number starts off; the other two start on.
@@ -39,7 +40,12 @@ export default function QuickAdd() {
     Object.fromEntries(FIELD_PREFS.map((p) => [p.key, p.defaultOn])),
   );
   const [showPartNo, showMfr, showLoc] = FIELD_PREFS.map((p) => prefs[p.key]);
-  const activeSystems = (systems ?? []).filter((s) => s.active || s.id === f.systemId);
+  // f.systemId holds the sub-system when one is picked, otherwise the main system.
+  const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
+  const mainId = idx.mainOf(f.systemId);
+  const subId = idx.subOf(f.systemId);
+  const mainChoices = idx.mains.filter((s) => s.active || s.id === mainId);
+  const subChoices = mainId ? idx.subs(mainId).filter((s) => s.active || s.id === subId) : [];
   const mfrSuggestions = [...new Set([...MANUFACTURERS, ...distinctOptions(parts ?? [], "manufacturer").map((o) => o.label)])].sort();
   const locSuggestions = distinctOptions(parts ?? [], "oldLocation").map((o) => o.label);
   const [last, setLast] = useState<{ id: string; partId: string; name: string; detail: string } | null>(null);
@@ -177,11 +183,25 @@ export default function QuickAdd() {
           label="System"
           cols={2}
           allowNone
-          value={f.systemId}
+          value={mainId}
           onChange={(systemId) => set({ systemId })}
-          options={activeSystems.map((s) => ({ value: s.id, label: s.name }))}
+          options={mainChoices.map((s) => ({ value: s.id, label: s.name }))}
         />
       </div>
+
+      {subChoices.length > 0 && (
+        <div className="field">
+          <span className="field-label">Sub-system</span>
+          <Choice
+            label="Sub-system"
+            cols={2}
+            allowNone
+            value={subId}
+            onChange={(sub) => set({ systemId: sub ?? mainId })}
+            options={subChoices.map((s) => ({ value: s.id, label: s.name }))}
+          />
+        </div>
+      )}
 
       <div className="field">
         <span className="field-label">Photos</span>

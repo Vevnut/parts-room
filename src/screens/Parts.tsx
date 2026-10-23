@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import { ValidationError, deletePart, duplicatePart, savePart, stripPart, suggestPartId } from "../db/repo";
 import { distinctOptions, filterParts, manufacturerOptions } from "../domain/search";
+import { indexSystems } from "../domain/systems";
 import { PartPhotos } from "./Photos";
 import {
   CONDITIONS,
@@ -57,7 +58,7 @@ export function PartsList() {
   const [showFilters, setShowFilters] = useState(() => FILTER_KEYS.some((k) => params.has(k)));
 
   const binCode = useMemo(() => new Map((bins ?? []).map((b) => [b.id, b.binCode])), [bins]);
-  const sysName = useMemo(() => new Map((systems ?? []).map((s) => [s.id, s.name])), [systems]);
+  const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
 
   const manufacturers = useMemo(() => manufacturerOptions(parts ?? []), [parts]);
   const photoCounts = useLiveQuery(async () => {
@@ -84,6 +85,7 @@ export function PartsList() {
         details: !!params.get("details"),
       },
       (id) => binCode.get(id) ?? "",
+      (id) => idx.get(id)?.parentId ?? null,
     );
     const sort = params.get("sort") || "recent";
     return r.sort((a, b) =>
@@ -145,9 +147,9 @@ export function PartsList() {
           <select aria-label="System" value={get("system")} onChange={(e) => setParam("system", e.target.value)}>
             <option value="">All systems</option>
             <option value="none">No system</option>
-            {systems?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
+            {idx.options().map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>
@@ -216,7 +218,7 @@ export function PartsList() {
                     <span className="mono">{p.partId}</span>
                     {p.manufacturer && <span>{p.manufacturer}</span>}
                     {p.mfrPartNumber && <span className="mono">{p.mfrPartNumber}</span>}
-                    {p.systemId && <span>{sysName.get(p.systemId)}</span>}
+                    {p.systemId && <span>{idx.label(p.systemId)}</span>}
                   </span>
                   <span className="chips">
                     <StatusChip part={p} />
@@ -323,6 +325,11 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
   const set = (patch: Partial<Form>) => draft.setValue({ ...f, ...patch });
   const bins = useBins();
   const systems = useSystems();
+  // f.systemId holds the sub-system when one is picked, otherwise the main system.
+  const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
+  const mainId = idx.mainOf(f.systemId);
+  const subId = idx.subOf(f.systemId);
+  const subChoices = mainId ? idx.subs(mainId).filter((s) => s.active || s.id === subId) : [];
   const navigate = useNavigate();
   const toast = useToast();
   const [errors, setErrors] = useState<PartErrors>({});
@@ -430,10 +437,10 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
           <input value={f.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" />
         </Field>
         <Field label="System">
-          <select value={f.systemId ?? ""} onChange={(e) => set({ systemId: e.target.value || null })}>
+          <select value={mainId ?? ""} onChange={(e) => set({ systemId: e.target.value || null })}>
             <option value="">— None —</option>
-            {systems
-              ?.filter((s) => s.active || s.id === f.systemId)
+            {idx.mains
+              .filter((s) => s.active || s.id === mainId)
               .map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -442,6 +449,19 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
               ))}
           </select>
         </Field>
+        {subChoices.length > 0 && (
+          <Field label="Sub-system">
+            <select value={subId ?? ""} onChange={(e) => set({ systemId: e.target.value || mainId })}>
+              <option value="">— None —</option>
+              {subChoices.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.active ? "" : " (hidden)"}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <div className="field">
           <span className="field-label">Qty on hand</span>
           <Stepper label="Qty on hand" value={f.qty} onChange={(qty) => set({ qty })} />

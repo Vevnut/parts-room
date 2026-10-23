@@ -86,6 +86,7 @@ export interface System {
   name: string;
   sortOrder: number;
   active: boolean;
+  parentId?: string | null; // set on a sub-system; one level deep. Missing on rows from before sub-systems.
 }
 
 const cents = (n: number) => Math.round(n * 100) / 100;
@@ -146,10 +147,14 @@ export function summarize(allParts: Part[], systems: System[]): Summary {
   const kept = parts.filter(isKept);
   const count = (pl: Placement) => parts.filter((p) => placementOf(p) === pl).length;
   const putAway = count("Put away");
-  const bySystem = [...systems]
+  // Sub-system parts count toward their main system.
+  const parent = new Map(systems.map((s) => [s.id, s.parentId ?? null]));
+  const mainOf = (id: string | null) => (id ? (parent.get(id) ?? id) : null);
+  const bySystem = systems
+    .filter((s) => !s.parentId)
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((s) => {
-      const inSys = kept.filter((p) => p.systemId === s.id);
+      const inSys = kept.filter((p) => mainOf(p.systemId) === s.id);
       return {
         systemId: s.id,
         name: s.name,

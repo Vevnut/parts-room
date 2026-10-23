@@ -180,4 +180,16 @@ describe("pulling", () => {
     expect(res.results[0].status).toBe("ok");
     expect(res.rows.systems[0].name).toBe("Fuel System");
   });
+
+  it("syncs a sub-system's parent, and keeps it when an older app sends the row without one", async () => {
+    await push({ table: "systems", row: { id: "water-pumps", name: "Water pumps", sortOrder: 5, active: true, parentId: "mercury-m01" } });
+    await push({ table: "systems", row: { id: "water-pumps", name: "Water Pumps", sortOrder: 6, active: true } });
+    const res = await handleSync(store, { push: [], cursors: {} });
+    expect(res.rows.systems.find((r) => r.id === "water-pumps")).toMatchObject({ name: "Water Pumps", sortOrder: 6, parentId: "mercury-m01" });
+  });
+
+  it("refuses a malformed parent id", async () => {
+    const res = await push({ table: "systems", row: { id: "x", name: "X", sortOrder: 1, active: true, parentId: "Not A Slug" } });
+    expect(res.results[0].status).toBe("invalid");
+  });
 });

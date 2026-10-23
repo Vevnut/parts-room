@@ -6,7 +6,7 @@ import { COLUMN_HINTS, DEFAULT_EXPORT_COLUMNS, buildExport, loadColumns, toCsv, 
 import { buildXlsx } from "../domain/xlsx";
 import { useSync } from "../sync/SyncProvider";
 import { ago } from "../sync/SyncBar";
-import { today, useBins, useParts, useToast } from "../ui";
+import { today, useBins, useParts, useSystems, useToast } from "../ui";
 
 const KEY = "export.lightspeed";
 const DEFAULT_OPTS: ExportOptions = { keptOnly: true, numberedOnly: true, skipZeroQty: false };
@@ -52,7 +52,11 @@ export default function Export() {
   const saved = useMemo(() => readSaved(stored), [stored]);
   const { columns, opts } = saved;
 
-  const result = useMemo(() => (parts && bins ? buildExport(parts, bins, columns, opts) : null), [parts, bins, columns, opts]);
+  const systems = useSystems();
+  const result = useMemo(
+    () => (parts && bins ? buildExport(parts, bins, columns, opts, systems ?? []) : null),
+    [parts, bins, columns, opts, systems],
+  );
 
   // Each change starts from what's stored, so a rename saved on blur isn't lost to a tap that follows it.
   const update = (fn: (s: Saved) => Partial<Saved>) =>

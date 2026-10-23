@@ -198,6 +198,7 @@ a.syncbar, button.syncbar { cursor: pointer; min-height: 44px; }
 .system-name { flex: 1 1 200px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .system-actions { display: flex; gap: 6px; align-items: center; }
 .system-actions .btn.small { min-width: 48px; min-height: var(--tap); }
+.subsystems { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 4px 18px; padding-left: 12px; border-left: 3px solid var(--line); }
 .small-link { font-size: 14px; font-weight: 650; padding: 6px 0; }
 .link-card { text-decoration: none; color: inherit; }
 .block { display: block; margin-top: 2px; }

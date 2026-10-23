@@ -168,6 +168,13 @@ describe("summarize", () => {
     expect(elec).toMatchObject({ keptParts: 1, units: 1, value: 5, needsBin: 1, reorder: 1, outOfStock: 0 });
     expect(s.keptWithoutSystem).toBe(1);
   });
+  it("rolls sub-system parts up into their main system", () => {
+    const withSub = [...systems, { id: "elec-wiring", name: "Wiring", sortOrder: 3, active: true, parentId: "elec" }];
+    const r = summarize([part({ systemId: "elec-wiring", qty: 2, unitCost: 3 }), part({ systemId: "elec", qty: 1 })], withSub);
+    expect(r.bySystem.map((x) => x.systemId)).toEqual(["engine", "elec"]);
+    expect(r.bySystem[1]).toMatchObject({ keptParts: 2, units: 3, value: 6 });
+    expect(r.keptWithoutSystem).toBe(0);
+  });
   it("percent done is 0 with nothing kept", () => {
     expect(summarize([], systems).pctPutAway).toBe(0);
   });

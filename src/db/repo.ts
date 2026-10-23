@@ -73,31 +73,39 @@ async function enqueue(table: SyncedTable, ids: string[]) {
 export async function ensureSeeded(): Promise<void> {
   await db.transaction("rw", db.systems, db.outbox, async () => {
     if ((await db.systems.count()) > 0) return;
-    const rows = DEFAULT_SYSTEMS.map((name, i) => ({ id: slug(name), name, sortOrder: i + 1, active: true }));
+    const rows = DEFAULT_SYSTEMS.map((name, i) => ({ id: slug(name), name, sortOrder: i + 1, active: true, parentId: null }));
     await db.systems.bulkAdd(rows);
     await enqueue("systems", rows.map((r) => r.id));
   });
 }
 
 // ---- systems: the list behind the System picker. Ids never change, so renaming keeps parts attached. ----
+// Main systems can hold sub-systems (one level deep); names must be unique among siblings.
 
-async function checkSystemName(name: string, exceptId?: string): Promise<string> {
+const siblingsOf = (all: System[], parentId: string | null) => all.filter((s) => (s.parentId ?? null) === parentId);
+
+async function checkSystemName(name: string, parentId: string | null, exceptId?: string): Promise<string> {
   const clean = name.trim().replace(/\s+/g, " ");
   if (!clean) throw new Error("Enter a system name.");
   if (clean.length > 80) throw new Error("Keep the system name under 80 characters.");
-  const clash = (await db.systems.toArray()).find((s) => s.id !== exceptId && s.name.toLowerCase() === clean.toLowerCase());
+  const clash = siblingsOf(await db.systems.toArray(), parentId).find((s) => s.id !== exceptId && s.name.toLowerCase() === clean.toLowerCase());
   if (clash) throw new SystemNameTakenError(clash.name);
   return clean;
 }
 
-export async function addSystem(name: string): Promise<System> {
+/** Adds a main system, or a sub-system when parentId names a main system. */
+export async function addSystem(name: string, parentId: string | null = null): Promise<System> {
   return db.transaction("rw", db.systems, db.outbox, async () => {
-    const clean = await checkSystemName(name);
+    if (parentId) {
+      const parent = await db.systems.get(parentId);
+      if (!parent || parent.parentId) throw new Error("Sub-systems go under a main system.");
+    }
+    const clean = await checkSystemName(name, parentId);
     const all = await db.systems.toArray();
     const base = slug(clean).slice(0, 56) || "system";
     let id = base;
     for (let i = 2; all.some((s) => s.id === id); i++) id = `${base}-${i}`;
-    const row: System = { id, name: clean, sortOrder: Math.max(0, ...all.map((s) => s.sortOrder)) + 1, active: true };
+    const row: System = { id, name: clean, sortOrder: Math.max(0, ...all.map((s) => s.sortOrder)) + 1, active: true, parentId };
     await db.systems.add(row);
     await enqueue("systems", [id]);
     return row;
@@ -106,7 +114,8 @@ export async function addSystem(name: string): Promise<System> {
 
 export async function renameSystem(id: string, name: string): Promise<void> {
   await db.transaction("rw", db.systems, db.outbox, async () => {
-    const clean = await checkSystemName(name, id);
+    const current = await db.systems.get(id);
+    const clean = await checkSystemName(name, current?.parentId ?? null, id);
     await db.systems.update(id, { name: clean });
     await enqueue("systems", [id]);
   });
@@ -119,10 +128,14 @@ export async function setSystemActive(id: string, active: boolean): Promise<void
   });
 }
 
-// Swap with the neighbour above (-1) or below (+1).
+// Swap with the neighbour above (-1) or below (+1): among main systems, or among one main
+// system's sub-systems.
 export async function moveSystem(id: string, direction: -1 | 1): Promise<void> {
   await db.transaction("rw", db.systems, db.outbox, async () => {
-    const list = await db.systems.orderBy("sortOrder").toArray();
+    const all = await db.systems.orderBy("sortOrder").toArray();
+    const me = all.find((s) => s.id === id);
+    if (!me) return;
+    const list = siblingsOf(all, me.parentId ?? null);
     const i = list.findIndex((s) => s.id === id);
     if (i < 0) return;
     // Hop over hidden systems so the move is visible in the list the user sees.

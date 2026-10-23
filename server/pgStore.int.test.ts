@@ -89,6 +89,13 @@ describe.skipIf(!url)("PgStore against Postgres", () => {
     expect(await store.getPhoto(meta.id)).toBeNull();
   });
 
+  it("stores a sub-system's parent and keeps it when an older app sends none", async () => {
+    expect(await store.upsert("systems", { id: "water-pumps", name: "Water pumps", sortOrder: 2, active: true, parentId: "mercury-m01" })).toBe("ok");
+    expect(await store.upsert("systems", { id: "water-pumps", name: "Water Pumps", sortOrder: 3, active: true, parentId: null })).toBe("ok");
+    const { rows } = await store.changedSince("systems", null, 10);
+    expect(rows).toEqual([{ id: "water-pumps", name: "Water Pumps", sortOrder: 3, active: true, parentId: "mercury-m01" }]);
+  });
+
   it("counts and clears failed logins", async () => {
     const now = Date.now();
     await store.recordFailedLogin("ip:1", now);

@@ -21,14 +21,20 @@ const matchText = (wanted: string | undefined, actual: string) => {
   return norm(actual) === norm(wanted);
 };
 
-export function filterParts(parts: Part[], f: PartFilters, binCode: (id: string) => string = () => ""): Part[] {
+// parentOf maps a sub-system to its main system, so filtering by a main system includes its sub-systems.
+export function filterParts(
+  parts: Part[],
+  f: PartFilters,
+  binCode: (id: string) => string = () => "",
+  parentOf: (systemId: string) => string | null = () => null,
+): Part[] {
   const q = norm(f.q);
   return parts.filter((p) => {
     if (q) {
       const hay = [p.partId, p.name, p.mfrPartNumber, p.manufacturer, p.supplier, p.notes, p.oldLocation, p.binId ? binCode(p.binId) : ""].join(" ").toLowerCase();
       if (!hay.includes(q)) return false;
     }
-    if (f.system && (f.system === "none" ? p.systemId : p.systemId !== f.system)) return false;
+    if (f.system && (f.system === "none" ? p.systemId : !p.systemId || (p.systemId !== f.system && parentOf(p.systemId) !== f.system))) return false;
     if (f.bin && (f.bin === "none" ? p.binId : p.binId !== f.bin)) return false;
     if (f.status && statusOf(p) !== f.status) return false;
     if (f.placement && placementOf(p) !== f.placement) return false;

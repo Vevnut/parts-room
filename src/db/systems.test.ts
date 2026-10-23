@@ -82,3 +82,50 @@ describe("quick add with a part number", () => {
     expect(p.needsDetails).toBe(true);
   });
 });
+
+describe("sub-systems", () => {
+  const subsOf = async (parentId: string) =>
+    (await db.systems.orderBy("sortOrder").toArray()).filter((s) => s.parentId === parentId).map((s) => s.name);
+  const mains = async () => (await db.systems.orderBy("sortOrder").toArray()).filter((s) => !s.parentId).map((s) => s.name);
+
+  it("adds a sub-system under a main system and queues it for sync", async () => {
+    const s = await addSystem(" Water pumps ", "fuel-system");
+    expect(s).toMatchObject({ name: "Water pumps", parentId: "fuel-system", active: true });
+    expect(await db.outbox.get(["systems", s.id])).toBeTruthy();
+    expect((await addSystem("Trailer")).parentId).toBeNull();
+  });
+
+  it("allows the same sub-system name under different main systems, but not twice under one", async () => {
+    await addSystem("Gaskets", "fuel-system");
+    const other = await addSystem("Gaskets", "other");
+    expect(other.id).toBe("gaskets-2");
+    await expect(addSystem("gaskets", "fuel-system")).rejects.toBeInstanceOf(SystemNameTakenError);
+    await renameSystem(other.id, "GASKETS"); // its own name, recapitalised
+    expect((await db.systems.get(other.id))!.name).toBe("GASKETS");
+  });
+
+  it("only goes one level deep", async () => {
+    const sub = await addSystem("Water pumps", "fuel-system");
+    await expect(addSystem("Impellers", sub.id)).rejects.toThrow(/main system/i);
+    await expect(addSystem("Impellers", "missing")).rejects.toThrow(/main system/i);
+  });
+
+  it("moves a sub-system only among its own siblings", async () => {
+    const a = await addSystem("A", "fuel-system");
+    const b = await addSystem("B", "fuel-system");
+    await addSystem("Elsewhere", "other");
+    await moveSystem(b.id, -1);
+    expect(await subsOf("fuel-system")).toEqual(["B", "A"]);
+    await moveSystem(b.id, -1); // already first of its siblings
+    expect(await subsOf("fuel-system")).toEqual(["B", "A"]);
+    await moveSystem(a.id, 1); // already last
+    expect(await subsOf("fuel-system")).toEqual(["B", "A"]);
+  });
+
+  it("moves a main system past sub-systems, among main systems only", async () => {
+    await addSystem("Sub", "engine-propulsion");
+    await moveSystem("other", -1);
+    const list = await mains();
+    expect(list.slice(-2)).toEqual(["Other", "Tools & Consumables"]);
+  });
+});

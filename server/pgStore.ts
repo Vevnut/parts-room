@@ -51,7 +51,10 @@ export class PgStore implements Store {
     const cols = names.map(snake);
     const values = names.map((n) => row[n] ?? null);
     const placeholders = names.map((_, i) => `$${i + 1}`);
-    const updates = cols.filter((c) => c !== "id").map((c) => `${c} = excluded.${c}`);
+    // An app from before sub-systems sends no parent; keep the one already stored.
+    const updates = cols
+      .filter((c) => c !== "id")
+      .map((c) => (table === "systems" && c === "parent_id" ? `${c} = coalesce(excluded.${c}, systems.${c})` : `${c} = excluded.${c}`));
     const guard = table === "systems" ? "" : ` where ${TABLE_SQL[table]}.updated_at <= excluded.updated_at`;
     const text =
       `insert into ${TABLE_SQL[table]} (${cols.join(", ")}) values (${placeholders.join(", ")}) ` +

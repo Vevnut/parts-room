@@ -101,3 +101,22 @@ describe("CSV", () => {
     expect(toCsv(["A"], [["=HYPERLINK(1)"], ["+1"], ["@x"], ["-12"]])).toBe("﻿A\r\n'=HYPERLINK(1)\r\n'+1\r\n'@x\r\n-12\r\n");
   });
 });
+
+describe("system columns", () => {
+  it("can add the main system and sub-system as columns", () => {
+    const systems = [
+      { id: "m", name: "MERCURY (M01)", sortOrder: 1, active: true, parentId: null },
+      { id: "wp", name: "Water pumps", sortOrder: 2, active: true, parentId: "m" },
+    ];
+    const cols: ExportColumn[] = [
+      { key: "mfrPartNumber", header: "PN", enabled: true },
+      { key: "system", header: "Category", enabled: true },
+      { key: "subsystem", header: "Sub", enabled: true },
+    ];
+    const out = buildExport([part({ mfrPartNumber: "A", systemId: "wp" }), part({ mfrPartNumber: "B", systemId: "m" }), part({ mfrPartNumber: "C" })], [], cols, defaults, systems);
+    expect(out.rows).toEqual([["A", "MERCURY (M01)", "Water pumps"], ["B", "MERCURY (M01)", ""], ["C", "", ""]]);
+  });
+  it("adds the system columns switched off by default", () => {
+    expect(DEFAULT_EXPORT_COLUMNS.filter((c) => c.key === "system" || c.key === "subsystem").map((c) => c.enabled)).toEqual([false, false]);
+  });
+});

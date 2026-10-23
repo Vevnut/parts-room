@@ -8,6 +8,8 @@ create table if not exists systems (
   active            boolean not null default true,
   server_updated_at timestamptz not null default date_trunc('milliseconds', clock_timestamp())
 );
+-- Sub-systems (one level deep) point at their main system.
+alter table systems add column if not exists parent_id text check (parent_id ~ '^[a-z0-9][a-z0-9-]{0,62}$');
 
 create table if not exists bins (
   id                uuid primary key,

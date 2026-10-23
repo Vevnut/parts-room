@@ -25,7 +25,13 @@ export class MemoryStore implements Store {
       for (const [id, e] of t) if (id !== row.id && uniqueKey(table, e.row) === key) return "conflict";
     }
     // A photo's image and description never change after upload; only its deletion syncs.
-    const next = table === "photos" ? { ...existing!.row, deletedAt: row.deletedAt, updatedAt: row.updatedAt } : row;
+    // A system row from an app older than sub-systems has no parent; keep the stored one.
+    const next =
+      table === "photos"
+        ? { ...existing!.row, deletedAt: row.deletedAt, updatedAt: row.updatedAt }
+        : table === "systems" && row.parentId == null && existing
+          ? { ...row, parentId: existing.row.parentId ?? null }
+          : row;
     t.set(row.id, { row: structuredClone(next), serverTs: this.stamp() });
     return "ok";
   }

@@ -6,6 +6,7 @@ import { db } from "../db/db";
 import { assignBin, deleteBin, putAwayBin, saveBin, setMovedBack } from "../db/repo";
 import { binStats, placementOf, type Bin } from "../domain/rules";
 import { oldBins } from "../domain/search";
+import { indexSystems } from "../domain/systems";
 import { BinLabel, Choice, ConfirmButton, Field, StatusChip, fmtMoney, fmtQty, useBins, useParts, useSystems, useToast } from "../ui";
 
 export function BinsList() {
@@ -291,14 +292,14 @@ export function NeedsBin() {
   const [system, setSystem] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const toast = useToast();
-  const sysName = useMemo(() => new Map((systems ?? []).map((s) => [s.id, s.name])), [systems]);
+  const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
 
   const queue = useMemo(
     () =>
       (parts ?? [])
-        .filter((p) => placementOf(p) === "Needs bin" && (!system || p.systemId === system))
-        .sort((a, b) => (sysName.get(a.systemId ?? "") ?? "~").localeCompare(sysName.get(b.systemId ?? "") ?? "~") || a.name.localeCompare(b.name)),
-    [parts, system, sysName],
+        .filter((p) => placementOf(p) === "Needs bin" && (!system || idx.within(p.systemId, system)))
+        .sort((a, b) => (idx.label(a.systemId) || "~").localeCompare(idx.label(b.systemId) || "~") || a.name.localeCompare(b.name)),
+    [parts, system, idx],
   );
 
   const flip = (id: string) =>
@@ -343,9 +344,9 @@ export function NeedsBin() {
           </select>
           <select aria-label="Filter by system" value={system} onChange={(e) => setSystem(e.target.value)}>
             <option value="">All systems</option>
-            {systems?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
+            {idx.options().map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>
@@ -366,7 +367,7 @@ export function NeedsBin() {
                   <span className="part-name">{p.name}</span>
                   <span className="part-meta">
                     <span className="mono">{p.partId}</span>
-                    {p.systemId && <span>{sysName.get(p.systemId)}</span>}
+                    {p.systemId && <span>{idx.label(p.systemId)}</span>}
                     <span>Qty {fmtQty(p.qty)}</span>
                     {p.oldLocation && <span>was: {p.oldLocation}</span>}
                   </span>
