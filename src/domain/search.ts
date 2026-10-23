@@ -11,6 +11,7 @@ export interface PartFilters {
   details?: boolean; // only parts still needing details
   mfr?: string; // manufacturer (any case), or "none"
   loc?: string; // old location (any case), or "none"
+  spot?: string; // container spot (any case), or "none"
   noPrice?: boolean; // kept or for-sale parts with no retail price yet
 }
 
@@ -31,7 +32,7 @@ export function filterParts(
   const q = norm(f.q);
   return parts.filter((p) => {
     if (q) {
-      const hay = [p.partId, p.name, p.mfrPartNumber, p.manufacturer, p.supplier, p.notes, p.oldLocation, p.binId ? binCode(p.binId) : ""].join(" ").toLowerCase();
+      const hay = [p.partId, p.name, p.mfrPartNumber, p.manufacturer, p.supplier, p.notes, p.oldLocation, p.stagingSpot ?? "", p.binId ? binCode(p.binId) : ""].join(" ").toLowerCase();
       if (!hay.includes(q)) return false;
     }
     if (f.system && (f.system === "none" ? p.systemId : !p.systemId || (p.systemId !== f.system && parentOf(p.systemId) !== f.system))) return false;
@@ -42,6 +43,7 @@ export function filterParts(
     if (f.details && !p.needsDetails) return false;
     if (!matchText(f.mfr, p.manufacturer)) return false;
     if (!matchText(f.loc, p.oldLocation)) return false;
+    if (!matchText(f.spot, p.stagingSpot ?? "")) return false;
     if (f.noPrice && (p.retailPrice != null || (!isKept(p) && p.disposition !== "Donate/Sell"))) return false;
     return true;
   });
@@ -55,12 +57,13 @@ export interface TextOption {
 export type ManufacturerOption = TextOption;
 
 // One entry per value actually entered on a part, however it was capitalized, A to Z.
-export function distinctOptions(parts: Part[], field: "manufacturer" | "oldLocation"): TextOption[] {
+export function distinctOptions(parts: Part[], field: "manufacturer" | "oldLocation" | "stagingSpot"): TextOption[] {
   const groups = new Map<string, Map<string, number>>();
   for (const p of parts) {
-    const key = norm(p[field]);
+    const text = p[field] ?? "";
+    const key = norm(text);
     if (!key) continue;
-    const spelling = p[field].trim().replace(/\s+/g, " ");
+    const spelling = text.trim().replace(/\s+/g, " ");
     const g = groups.get(key) ?? new Map<string, number>();
     g.set(spelling, (g.get(spelling) ?? 0) + 1);
     groups.set(key, g);
@@ -78,7 +81,7 @@ export function distinctOptions(parts: Part[], field: "manufacturer" | "oldLocat
 export const manufacturerOptions = (parts: Part[]) => distinctOptions(parts, "manufacturer");
 
 export interface OldBin {
-  value: string; // matches the Parts screen's "loc" filter
+  value: string; // matches the Parts screen's "loc" (or "spot") filter
   label: string;
   parts: number;
   units: number;
@@ -86,10 +89,10 @@ export interface OldBin {
   unpriced: number;
 }
 
-/** Parts grouped by where they were in the old room ("old bins"), in label order. */
-export function oldBins(parts: Part[]): OldBin[] {
-  return distinctOptions(parts, "oldLocation").map((o) => {
-    const inBin = parts.filter((p) => norm(p.oldLocation) === o.value);
+/** Parts grouped by where they were in the old room ("old bins"), or by container spot, in label order. */
+export function oldBins(parts: Part[], field: "oldLocation" | "stagingSpot" = "oldLocation"): OldBin[] {
+  return distinctOptions(parts, field).map((o) => {
+    const inBin = parts.filter((p) => norm(p[field]) === o.value);
     return {
       value: o.value,
       label: o.label,

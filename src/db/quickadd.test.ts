@@ -24,13 +24,13 @@ describe("older-shop lists", () => {
 
 describe("quick add with manufacturer and old location", () => {
   it("stores them, trimmed", async () => {
-    const p = await quickAdd({ name: "Gasket set", systemId: null, qty: 1, disposition: null, manufacturer: " OMC ", oldLocation: " Misc bin 7 " });
-    expect(p).toMatchObject({ manufacturer: "OMC", oldLocation: "Misc bin 7" });
+    const p = await quickAdd({ name: "Gasket set", systemId: null, qty: 1, disposition: null, manufacturer: " OMC ", oldLocation: " Misc bin 7 ", stagingSpot: " Container  shelf 2 " });
+    expect(p).toMatchObject({ manufacturer: "OMC", oldLocation: "Misc bin 7", stagingSpot: "Container shelf 2" });
   });
 
-  it("keeps system, manufacturer and old location for the next part; clears the rest", () => {
-    const next = nextQuickAddForm({ name: "Gasket set", mfrPartNumber: "0388xxx", manufacturer: "OMC", oldLocation: "Misc bin 7", systemId: "engine-propulsion", qty: 4, disposition: "Unknown" });
-    expect(next).toEqual({ name: "", mfrPartNumber: "", manufacturer: "OMC", oldLocation: "Misc bin 7", systemId: "engine-propulsion", qty: 1, disposition: "Keep" });
+  it("keeps system, manufacturer, old location and container spot for the next part; clears the rest", () => {
+    const next = nextQuickAddForm({ name: "Gasket set", mfrPartNumber: "0388xxx", manufacturer: "OMC", oldLocation: "Misc bin 7", stagingSpot: "Container 2", systemId: "engine-propulsion", qty: 4, disposition: "Unknown" });
+    expect(next).toEqual({ name: "", mfrPartNumber: "", manufacturer: "OMC", oldLocation: "Misc bin 7", stagingSpot: "Container 2", systemId: "engine-propulsion", qty: 1, disposition: "Keep" });
   });
 });
 

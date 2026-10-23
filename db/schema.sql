@@ -59,6 +59,8 @@ create table if not exists parts (
 -- Part IDs are unique among live parts (they become the Lightspeed SKU). NULL keys (deleted) don't clash.
 create unique index if not exists parts_live_part_id on parts (part_key);
 create index if not exists parts_sync on parts (server_updated_at, (id::text));
+-- Where a part sits while the old room is cleared (e.g. a container shelf). Null on rows from before.
+alter table parts add column if not exists staging_spot text;
 
 -- Conditions added after the first release ("No longer available"). Re-stating the check keeps
 -- older databases in step; it is safe to run repeatedly.

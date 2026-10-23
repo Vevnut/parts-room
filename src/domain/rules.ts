@@ -38,6 +38,7 @@ export interface Part {
   condition: Condition | null;
   disposition: Disposition | null; // null = blank, which counts as Keep
   oldLocation: string;
+  stagingSpot?: string | null; // container / staging spot while the room is cleared; missing on rows from before it existed
   binId: string | null;
   movedBack: boolean;
   manufacturer: string;

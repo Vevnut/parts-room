@@ -130,3 +130,21 @@ describe("same part number", () => {
     expect(samePartNumber(ps, "27-3489")).toEqual([]); // whole numbers only
   });
 });
+
+describe("container spot", () => {
+  const ps = [
+    part({ name: "In container", stagingSpot: "Container shelf 2", qty: 3, retailPrice: 5 }),
+    part({ name: "Same spot", stagingSpot: " container  SHELF 2 ", qty: 1 }),
+    part({ name: "Old row" }), // synced before container spots existed
+    part({ name: "Null spot", stagingSpot: null }),
+  ];
+  it("filters by spot, or by no spot, and finds it by search", () => {
+    expect(names(filterParts(ps, { spot: "Container shelf 2" }))).toEqual(["In container", "Same spot"]);
+    expect(names(filterParts(ps, { spot: "none" }))).toEqual(["Old row", "Null spot"]);
+    expect(names(filterParts(ps, { q: "shelf 2" }))).toEqual(["In container", "Same spot"]);
+  });
+  it("lists spots with their parts, units and value, like old bins", () => {
+    expect(distinctOptions(ps, "stagingSpot").map((o) => [o.label, o.count])).toEqual([["Container shelf 2", 2]]);
+    expect(oldBins(ps, "stagingSpot")).toEqual([{ value: "container shelf 2", label: "Container shelf 2", parts: 2, units: 4, retail: 15, unpriced: 1 }]);
+  });
+});

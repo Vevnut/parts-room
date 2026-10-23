@@ -52,3 +52,11 @@ describe("changing many parts at once", () => {
     expect(await db.outbox.count()).toBe(0);
   });
 });
+
+describe("changing the container spot on many parts", () => {
+  it("sets it, trimmed", async () => {
+    const a = await add("A");
+    await updateParts([a.id], { stagingSpot: "  Container  2 " });
+    expect((await db.parts.get(a.id))!.stagingSpot).toBe("Container 2");
+  });
+});

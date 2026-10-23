@@ -8,7 +8,7 @@ import type { Cell } from "./xlsx.js";
 export type ColumnKey =
   | "mfrPartNumber" | "supplier" | "manufacturer" | "name" | "qty" | "unitCost" | "retailPrice"
   | "bin" | "minQty" | "reorderQty" | "condition" | "partId" | "notes" | "oldLocation" | "lastCounted"
-  | "system" | "subsystem";
+  | "system" | "subsystem" | "stagingSpot";
 
 export interface ExportColumn {
   key: ColumnKey;
@@ -34,6 +34,7 @@ export const COLUMN_HINTS: Record<ColumnKey, string> = {
   lastCounted: "Last counted (YYYY-MM-DD)",
   system: "Main system",
   subsystem: "Sub-system",
+  stagingSpot: "Container spot",
 };
 
 export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = [
@@ -54,6 +55,7 @@ export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = [
   { key: "lastCounted", header: "Last Counted", enabled: false },
   { key: "system", header: "Category", enabled: false },
   { key: "subsystem", header: "Sub-category", enabled: false },
+  { key: "stagingSpot", header: "Container Spot", enabled: false },
 ];
 
 /** Reads saved column settings, repairing anything missing or unknown. */
@@ -98,6 +100,7 @@ function value(p: Part, key: ColumnKey, binCode: Lookup, mainName: Lookup, subNa
     case "partId": return p.partId;
     case "notes": return p.notes;
     case "oldLocation": return p.oldLocation.trim();
+    case "stagingSpot": return (p.stagingSpot ?? "").trim();
     case "lastCounted": return p.lastCounted ?? "";
     case "qty": return p.qty;
     case "unitCost": return p.unitCost;

@@ -43,7 +43,7 @@ import {
 // Stock levels and reordering are tracked in Lightspeed once parts move over, so no Reorder here.
 const STATUSES = ["OK", "Out of stock", "Not kept"];
 const PLACEMENTS = ["Needs bin", "Staged", "Put away"];
-const FILTER_KEYS = ["mfr", "loc", "system", "bin", "status", "placement", "disposition", "details", "noprice"];
+const FILTER_KEYS = ["mfr", "loc", "spot", "system", "bin", "status", "placement", "disposition", "details", "noprice"];
 
 export function PartsList() {
   const parts = useParts();
@@ -69,6 +69,7 @@ export function PartsList() {
     return m;
   }, []);
   const locations = useMemo(() => distinctOptions(parts ?? [], "oldLocation"), [parts]);
+  const spots = useMemo(() => distinctOptions(parts ?? [], "stagingSpot"), [parts]);
 
   const rows = useMemo(() => {
     if (!parts) return [];
@@ -78,6 +79,7 @@ export function PartsList() {
         q: params.get("q") ?? "",
         mfr: params.get("mfr") ?? "",
         loc: params.get("loc") ?? "",
+        spot: params.get("spot") ?? "",
         noPrice: !!params.get("noprice"),
         system: params.get("system") ?? "",
         bin: params.get("bin") ?? "",
@@ -171,6 +173,17 @@ export function PartsList() {
               </option>
             ))}
           </select>
+          {spots.length > 0 && (
+            <select aria-label="Container spot" value={get("spot").toLowerCase()} onChange={(e) => setParam("spot", e.target.value)}>
+              <option value="">All container spots</option>
+              <option value="none">No container spot</option>
+              {spots.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label} ({l.count})
+                </option>
+              ))}
+            </select>
+          )}
           <select aria-label="System" value={get("system")} onChange={(e) => setParam("system", e.target.value)}>
             <option value="">All systems</option>
             <option value="none">No system</option>
@@ -322,6 +335,7 @@ interface Form {
   condition: Condition | null;
   disposition: Disposition | null;
   oldLocation: string;
+  stagingSpot: string;
   binId: string | null;
   movedBack: boolean;
   manufacturer: string;
@@ -349,6 +363,7 @@ function toForm(p: Part | null, partId: string): Form {
     condition: p?.condition ?? null,
     disposition: p ? p.disposition : "Keep",
     oldLocation: p?.oldLocation ?? "",
+    stagingSpot: p?.stagingSpot ?? "",
     binId: p?.binId ?? null,
     movedBack: p?.movedBack ?? false,
     manufacturer: p?.manufacturer ?? "",
@@ -442,6 +457,7 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
         movedBack: kept && !!f.binId && f.movedBack,
         lastCounted: f.lastCounted || null,
         replaceBy: f.replaceBy || null,
+        stagingSpot: (f.stagingSpot ?? "").trim().replace(/s+/g, " "),
       });
       draft.reset(toForm(saved, saved.partId));
       toast(`Saved ${saved.partId}`);
@@ -603,6 +619,9 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
         <legend>Location</legend>
         <Field label="Old location" hint="Where it was in the old room">
           <input value={f.oldLocation} onChange={(e) => set({ oldLocation: e.target.value })} placeholder="e.g. Shelf 3 left" />
+        </Field>
+        <Field label="Container spot" hint="Where it is now, while the room is cleared">
+          <input value={f.stagingSpot ?? ""} onChange={(e) => set({ stagingSpot: e.target.value })} placeholder="e.g. Container A shelf 2" />
         </Field>
         <Field label="New bin" hint={kept ? undefined : "Toss and Donate/Sell parts don't go in bins."}>
           <select value={kept ? f.binId ?? "" : ""} disabled={!kept} onChange={(e) => set({ binId: e.target.value || null, movedBack: e.target.value ? f.movedBack : false })}>

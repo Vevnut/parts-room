@@ -16,6 +16,7 @@ export default function BulkEdit({ ids, idx, onDone }: { ids: string[]; idx: Sys
   const [disposition, setDisposition] = useState(LEAVE);
   const [condition, setCondition] = useState(LEAVE);
   const [oldLocation, setOldLocation] = useState("");
+  const [stagingSpot, setStagingSpot] = useState("");
   const [manufacturer, setManufacturer] = useState("");
   const [details, setDetails] = useState(LEAVE);
   const [busy, setBusy] = useState(false);
@@ -29,6 +30,7 @@ export default function BulkEdit({ ids, idx, onDone }: { ids: string[]; idx: Sys
     if (disposition) out.disposition = disposition === CLEAR ? null : (disposition as Disposition);
     if (condition) out.condition = condition === CLEAR ? null : (condition as Condition);
     if (oldLocation.trim()) out.oldLocation = oldLocation;
+    if (stagingSpot.trim()) out.stagingSpot = stagingSpot;
     if (manufacturer.trim()) out.manufacturer = manufacturer;
     if (details) out.needsDetails = details === "yes";
     return out;
@@ -111,6 +113,9 @@ export default function BulkEdit({ ids, idx, onDone }: { ids: string[]; idx: Sys
           <input value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} autoComplete="off" />
         </Field>
       </div>
+      <Field label="Container spot" hint="Blank leaves it as is">
+        <input value={stagingSpot} onChange={(e) => setStagingSpot(e.target.value)} placeholder="e.g. Container A shelf 2" autoComplete="off" />
+      </Field>
       <Field label="Needs details">
         <select value={details} onChange={(e) => setDetails(e.target.value)}>
           <option value={LEAVE}>Leave as is</option>

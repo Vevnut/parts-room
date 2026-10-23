@@ -14,11 +14,12 @@ import { distinctOptions, samePartNumber } from "../domain/search";
 import { indexSystems } from "../domain/systems";
 import { Choice, Field, Stepper, fmtQty, useDraft, useParts, useSystems, useToast } from "../ui";
 
-// Per-device preferences, not synced. Part number starts off; the other two start on.
+// Per-device preferences, not synced. Part number starts off; the others start on.
 const FIELD_PREFS = [
   { key: "quickAdd.showPartNumber", label: "Part number", defaultOn: false },
   { key: "quickAdd.showManufacturer", label: "Manufacturer", defaultOn: true },
   { key: "quickAdd.showOldLocation", label: "Old location", defaultOn: true },
+  { key: "quickAdd.showStagingSpot", label: "Container spot", defaultOn: true },
 ] as const;
 
 export default function QuickAdd() {
@@ -40,7 +41,7 @@ export default function QuickAdd() {
     [],
     Object.fromEntries(FIELD_PREFS.map((p) => [p.key, p.defaultOn])),
   );
-  const [showPartNo, showMfr, showLoc] = FIELD_PREFS.map((p) => prefs[p.key]);
+  const [showPartNo, showMfr, showLoc, showSpot] = FIELD_PREFS.map((p) => prefs[p.key]);
   // f.systemId holds the sub-system when one is picked, otherwise the main system.
   const idx = useMemo(() => indexSystems(systems ?? []), [systems]);
   const mainId = idx.mainOf(f.systemId);
@@ -50,6 +51,7 @@ export default function QuickAdd() {
   const matches = useMemo(() => (showPartNo ? samePartNumber(parts ?? [], f.mfrPartNumber) : []), [parts, f.mfrPartNumber, showPartNo]);
   const mfrSuggestions = [...new Set([...MANUFACTURERS, ...distinctOptions(parts ?? [], "manufacturer").map((o) => o.label)])].sort();
   const locSuggestions = distinctOptions(parts ?? [], "oldLocation").map((o) => o.label);
+  const spotSuggestions = distinctOptions(parts ?? [], "stagingSpot").map((o) => o.label);
   const [last, setLast] = useState<{ id: string; partId: string; name: string; detail: string } | null>(null);
   // Photos taken before saving; attached to the part when it's saved. Not kept across reloads.
   const [pendingPhotos, setPendingPhotos] = useState<ShrunkPhoto[]>([]);
@@ -77,6 +79,7 @@ export default function QuickAdd() {
         mfrPartNumber: showPartNo ? f.mfrPartNumber : "",
         manufacturer: showMfr ? f.manufacturer : "",
         oldLocation: showLoc ? f.oldLocation : "",
+        stagingSpot: showSpot ? f.stagingSpot : "",
       });
       for (const ph of pendingPhotos) await addPhoto(p.id, ph.data, ph.mime, ph.width, ph.height);
       setPendingPhotos([]);
@@ -154,6 +157,23 @@ export default function QuickAdd() {
           <option key={l} value={l} />
         ))}
       </datalist>
+      {showSpot && (
+        <Field label="Container spot" hint="Where it's going now, e.g. a container shelf. Stays set too.">
+          <input
+            id="qa-spot"
+            list="qa-spots"
+            value={f.stagingSpot}
+            onChange={(e) => set({ stagingSpot: e.target.value })}
+            placeholder="e.g. Container A shelf 2"
+            autoComplete="off"
+          />
+        </Field>
+      )}
+      <datalist id="qa-spots">
+        {spotSuggestions.map((l) => (
+          <option key={l} value={l} />
+        ))}
+      </datalist>
 
       <Field label="Part name" error={error}>
         <input
@@ -208,6 +228,7 @@ export default function QuickAdd() {
                   <span className="mono">{p.partId}</span> {p.name} · qty {fmtQty(p.qty)}
                   {p.systemId ? ` · ${idx.label(p.systemId)}` : ""}
                   {p.oldLocation ? ` · ${p.oldLocation}` : ""}
+                  {p.stagingSpot ? ` · now in ${p.stagingSpot}` : ""}
                 </span>
                 <span className="actions-row">
                   <button type="button" className="btn small primary" disabled={saving} onClick={() => void addTo(p)}>

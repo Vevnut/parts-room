@@ -116,6 +116,11 @@ describe("system columns", () => {
     const out = buildExport([part({ mfrPartNumber: "A", systemId: "wp" }), part({ mfrPartNumber: "B", systemId: "m" }), part({ mfrPartNumber: "C" })], [], cols, defaults, systems);
     expect(out.rows).toEqual([["A", "MERCURY (M01)", "Water pumps"], ["B", "MERCURY (M01)", ""], ["C", "", ""]]);
   });
+  it("can add the container spot as a column, switched off by default", () => {
+    const out = buildExport([part({ mfrPartNumber: "A", stagingSpot: "Container 2" }), part({ mfrPartNumber: "B" })], [], [{ key: "stagingSpot", header: "Spot", enabled: true }], defaults);
+    expect(out.rows).toEqual([["Container 2"], [""]]);
+    expect(DEFAULT_EXPORT_COLUMNS.find((c) => c.key === "stagingSpot")?.enabled).toBe(false);
+  });
   it("adds the system columns switched off by default", () => {
     expect(DEFAULT_EXPORT_COLUMNS.filter((c) => c.key === "system" || c.key === "subsystem").map((c) => c.enabled)).toEqual([false, false]);
   });

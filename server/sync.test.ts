@@ -101,6 +101,15 @@ describe("pushing", () => {
     expect(res.results.map((r) => r.status)).toEqual(["invalid", "invalid", "invalid", "ok"]);
   });
 
+  it("syncs a part's container spot, and keeps it when an older app sends the part without one", async () => {
+    const p = part({ stagingSpot: "Container 2" } as Partial<Part>);
+    await push({ table: "parts", row: p });
+    const { stagingSpot: _drop, ...older } = { ...p, name: "Renamed", updatedAt: "2026-10-19T11:30:00.000Z" } as Record<string, unknown>;
+    await push({ table: "parts", row: older });
+    const saved = (await handleSync(store, { push: [], cursors: {} })).rows.parts.find((r) => r.id === p.id)!;
+    expect(saved).toMatchObject({ name: "Renamed", stagingSpot: "Container 2" });
+  });
+
   it("stores only known fields", async () => {
     const p = { ...part(), partKey: "X", evil: "<script>" };
     await push({ table: "parts", row: p });

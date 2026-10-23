@@ -19,7 +19,7 @@ describe.skipIf(!url)("PgStore against Postgres", () => {
     id: uuid(), partId: `MP-${n}`, name: "Impeller", systemId: "engine-propulsion", qty: 1.5, condition: "New", disposition: null,
     oldLocation: "Shelf 3", binId: null, movedBack: false, manufacturer: "Mercury", mfrPartNumber: "47-43026Q06", supplier: "",
     minQty: 2, reorderQty: null, unitCost: 28.5, retailPrice: null, lastCounted: "2026-10-18", replaceBy: null, photoLink: "",
-    notes: "line1\nline2", needsDetails: true, createdAt: "2026-10-19T11:00:00.000Z", updatedAt: "2026-10-19T11:00:00.000Z", deletedAt: null,
+    notes: "line1\nline2", needsDetails: true, stagingSpot: "Container 1", createdAt: "2026-10-19T11:00:00.000Z", updatedAt: "2026-10-19T11:00:00.000Z", deletedAt: null,
     ...over,
   });
 
@@ -68,6 +68,14 @@ describe.skipIf(!url)("PgStore against Postgres", () => {
     }
     expect([...seen].sort()).toEqual([...ids].sort());
     expect(new Set(seen).size).toBe(5);
+  });
+
+  it("keeps a part's container spot when an older app sends the part without one", async () => {
+    const p = part();
+    await store.upsert("parts", p);
+    expect(await store.upsert("parts", { ...p, name: "Renamed", stagingSpot: null, updatedAt: "2026-10-19T11:05:00.000Z" })).toBe("ok");
+    const { rows } = await store.changedSince("parts", null, 10);
+    expect(rows[0]).toMatchObject({ name: "Renamed", stagingSpot: "Container 1" });
   });
 
   it("accepts the No longer available condition", async () => {

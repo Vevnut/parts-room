@@ -25,6 +25,7 @@ export const FIELDS: Record<TableName, Record<string, FieldSpec>> = {
     condition: { kind: "condition", nullable: true },
     disposition: { kind: "disposition", nullable: true },
     oldLocation: text,
+    stagingSpot: { kind: "text", nullable: true }, // apps from before container spots send none
     binId: { kind: "uuid", nullable: true },
     movedBack: { kind: "bool" },
     manufacturer: text,

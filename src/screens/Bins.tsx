@@ -5,7 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import { assignBin, deleteBin, putAwayBin, saveBin, setMovedBack } from "../db/repo";
 import { binStats, placementOf, type Bin } from "../domain/rules";
-import { oldBins } from "../domain/search";
+import { oldBins, type OldBin } from "../domain/search";
 import { indexSystems } from "../domain/systems";
 import { BinLabel, Choice, ConfirmButton, Field, StatusChip, fmtMoney, fmtQty, useBins, useParts, useSystems, useToast } from "../ui";
 
@@ -13,6 +13,7 @@ export function BinsList() {
   const bins = useBins();
   const parts = useParts();
   const old = useMemo(() => oldBins(parts ?? []), [parts]);
+  const spots = useMemo(() => oldBins(parts ?? [], "stagingSpot"), [parts]);
   return (
     <div className="screen">
       <header className="screen-head row-between">
@@ -59,36 +60,43 @@ export function BinsList() {
         })}
       </ul>
 
-      {old.length > 0 && (
-        <section className="stack">
-          <h2>Old bins</h2>
-          <p className="sub">Where parts came from, from the Old location on each part. Tap one to see its parts.</p>
-          <ul className="list">
-            {old.map((o) => (
-              <li key={o.value}>
-                <Link to={`/parts?loc=${encodeURIComponent(o.value)}`} className="part-row">
-                  <div className="part-main">
-                    <span className="part-name">{o.label}</span>
-                    <span className="part-meta">
-                      {o.retail > 0 ? `${fmtMoney(o.retail)} at retail` : "No prices yet"}
-                      {o.retail > 0 && o.unpriced > 0 ? ` · ${o.unpriced} without a price` : ""}
-                    </span>
-                  </div>
-                  <div className="part-side stats-mini">
-                    <span>
-                      <b>{o.parts}</b> parts
-                    </span>
-                    <span>
-                      <b>{fmtQty(o.units)}</b> units
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <PlaceList title="Container spots" sub="Where parts are now, from the Container spot on each part. Tap one to see its parts." groups={spots} param="spot" />
+      <PlaceList title="Old bins" sub="Where parts came from, from the Old location on each part. Tap one to see its parts." groups={old} param="loc" />
     </div>
+  );
+}
+
+// Parts grouped by a text place (old location or container spot), each row opening the filtered Parts list.
+function PlaceList({ title, sub, groups, param }: { title: string; sub: string; groups: OldBin[]; param: "loc" | "spot" }) {
+  if (!groups.length) return null;
+  return (
+    <section className="stack">
+      <h2>{title}</h2>
+      <p className="sub">{sub}</p>
+      <ul className="list">
+        {groups.map((o) => (
+          <li key={o.value}>
+            <Link to={`/parts?${param}=${encodeURIComponent(o.value)}`} className="part-row">
+              <div className="part-main">
+                <span className="part-name">{o.label}</span>
+                <span className="part-meta">
+                  {o.retail > 0 ? `${fmtMoney(o.retail)} at retail` : "No prices yet"}
+                  {o.retail > 0 && o.unpriced > 0 ? ` · ${o.unpriced} without a price` : ""}
+                </span>
+              </div>
+              <div className="part-side stats-mini">
+                <span>
+                  <b>{o.parts}</b> parts
+                </span>
+                <span>
+                  <b>{fmtQty(o.units)}</b> units
+                </span>
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -373,6 +381,7 @@ export function NeedsBin() {
                     <span className="mono">{p.partId}</span>
                     <span>Qty {fmtQty(p.qty)}</span>
                     {p.oldLocation && <span>was: {p.oldLocation}</span>}
+                    {p.stagingSpot && <span>now: {p.stagingSpot}</span>}
                   </span>
                 </span>
               </label>

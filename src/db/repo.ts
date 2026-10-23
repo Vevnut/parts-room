@@ -60,6 +60,7 @@ export async function withDatabase<T>(d: PartsDB, fn: () => Promise<T>): Promise
 }
 
 const now = () => new Date().toISOString();
+const tidy = (s: string) => s.trim().replace(/\s+/g, " ");
 const uid = () => crypto.randomUUID();
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const PREFIX = "MP-";
@@ -177,6 +178,7 @@ const blankPart = (): Omit<Part, "id" | "partId" | "name" | "createdAt" | "updat
   condition: null,
   disposition: null,
   oldLocation: "",
+  stagingSpot: "",
   binId: null,
   movedBack: false,
   manufacturer: "",
@@ -241,13 +243,15 @@ export async function quickAdd(input: {
   mfrPartNumber?: string;
   manufacturer?: string;
   oldLocation?: string;
+  stagingSpot?: string;
 }): Promise<Part> {
-  const { mfrPartNumber, manufacturer, oldLocation, ...rest } = input;
+  const { mfrPartNumber, manufacturer, oldLocation, stagingSpot, ...rest } = input;
   return savePart({
     ...rest,
     mfrPartNumber: (mfrPartNumber ?? "").trim(),
     manufacturer: (manufacturer ?? "").trim(),
     oldLocation: (oldLocation ?? "").trim(),
+    stagingSpot: tidy(stagingSpot ?? ""),
     partId: await suggestPartId(),
     needsDetails: true,
   });
@@ -319,13 +323,14 @@ export async function adjustQty(id: string, delta: number): Promise<number> {
   });
 }
 
-export type BulkPatch = Partial<Pick<Part, "systemId" | "disposition" | "condition" | "oldLocation" | "manufacturer" | "needsDetails">>;
+export type BulkPatch = Partial<Pick<Part, "systemId" | "disposition" | "condition" | "oldLocation" | "stagingSpot" | "manufacturer" | "needsDetails">>;
 
 /** Changes the given fields on many parts at once. Returns how many were changed. */
 export async function updateParts(ids: string[], patch: BulkPatch): Promise<number> {
   const clean: BulkPatch = { ...patch };
   if (clean.oldLocation !== undefined) clean.oldLocation = clean.oldLocation.trim().replace(/\s+/g, " ");
   if (clean.manufacturer !== undefined) clean.manufacturer = clean.manufacturer.trim().replace(/\s+/g, " ");
+  if (typeof clean.stagingSpot === "string") clean.stagingSpot = tidy(clean.stagingSpot);
   if (!Object.keys(clean).length) return 0;
   const changed: string[] = [];
   await db.transaction("rw", db.parts, db.outbox, async () => {
