@@ -7,6 +7,7 @@ import { ValidationError, deletePart, duplicatePart, savePart, stripPart, sugges
 import { distinctOptions, filterParts, manufacturerOptions, samePartNumber } from "../domain/search";
 import { indexSystems } from "../domain/systems";
 import { PartPhotos } from "./Photos";
+import BulkEdit from "./BulkEdit";
 import {
   CONDITIONS,
   DISPOSITIONS,
@@ -95,14 +96,39 @@ export function PartsList() {
 
   const activeFilters = FILTER_KEYS.filter((k) => params.has(k)).length;
 
+  // Select mode: tick parts, then change them all at once.
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const pickedShown = rows.filter((p) => picked.has(p.id)).map((p) => p.id);
+  const flip = (id: string) =>
+    setPicked((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const stopSelecting = () => {
+    setSelecting(false);
+    setPicked(new Set());
+    setBulkOpen(false);
+  };
+
   return (
     <div className="screen">
       <header className="screen-head row-between">
         <h1>Parts</h1>
-        <Link to="/parts/new" className="btn">
-          New part
-        </Link>
+        <span className="row-gap">
+          <button type="button" className="btn" aria-pressed={selecting} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
+            {selecting ? "Done" : "Select"}
+          </button>
+          <Link to="/parts/new" className="btn">
+            New part
+          </Link>
+        </span>
       </header>
+
+      {bulkOpen && pickedShown.length > 0 && <BulkEdit ids={pickedShown} idx={idx} onDone={stopSelecting} />}
 
       <input
         type="search"
@@ -199,6 +225,19 @@ export function PartsList() {
 
       <p className="count">{parts ? `${rows.length} of ${parts.length} parts` : "Loading…"}</p>
 
+      {selecting && (
+        <div className="row-gap">
+          <button type="button" className="btn small" onClick={() => setPicked(new Set(rows.map((p) => p.id)))}>
+            Select all shown ({rows.length})
+          </button>
+          {picked.size > 0 && (
+            <button type="button" className="btn small" onClick={() => setPicked(new Set())}>
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {parts && parts.length === 0 ? (
         <div className="empty">
           <strong>No parts yet</strong>
@@ -211,7 +250,7 @@ export function PartsList() {
         <ul className="list">
           {rows.map((p) => (
             <li key={p.id}>
-              <Link to={`/parts/${p.id}`} className="part-row" data-ctx={`part:${p.id}`}>
+              <RowShell selecting={selecting} on={picked.has(p.id)} onFlip={() => flip(p.id)} to={`/parts/${p.id}`} ctx={`part:${p.id}`}>
                 <div className="part-main">
                   <span className="part-name">{p.name}</span>
                   <span className="part-meta">
@@ -230,12 +269,45 @@ export function PartsList() {
                   <span className="qty">{fmtQty(p.qty)}</span>
                   {p.binId && binCode.get(p.binId) && <BinLabel code={binCode.get(p.binId)!} />}
                 </div>
-              </Link>
+              </RowShell>
             </li>
           ))}
         </ul>
       )}
+
+      {selecting && !bulkOpen && (
+        <div className="sticky-actions">
+          <span className="sticky-count">{pickedShown.length} selected</span>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={!pickedShown.length}
+            onClick={() => {
+              setBulkOpen(true);
+              window.scrollTo({ top: 0 });
+            }}
+          >
+            Change…
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+// A part row: a link normally, a tick box in select mode.
+function RowShell({ selecting, on, onFlip, to, ctx, children }: { selecting: boolean; on: boolean; onFlip: () => void; to: string; ctx: string; children: React.ReactNode }) {
+  if (!selecting)
+    return (
+      <Link to={to} className="part-row" data-ctx={ctx}>
+        {children}
+      </Link>
+    );
+  return (
+    <label className={`pick-row${on ? " on" : ""}`}>
+      <input type="checkbox" checked={on} onChange={onFlip} />
+      {children}
+    </label>
   );
 }
 

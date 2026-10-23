@@ -319,6 +319,31 @@ export async function adjustQty(id: string, delta: number): Promise<number> {
   });
 }
 
+export type BulkPatch = Partial<Pick<Part, "systemId" | "disposition" | "condition" | "oldLocation" | "manufacturer" | "needsDetails">>;
+
+/** Changes the given fields on many parts at once. Returns how many were changed. */
+export async function updateParts(ids: string[], patch: BulkPatch): Promise<number> {
+  const clean: BulkPatch = { ...patch };
+  if (clean.oldLocation !== undefined) clean.oldLocation = clean.oldLocation.trim().replace(/\s+/g, " ");
+  if (clean.manufacturer !== undefined) clean.manufacturer = clean.manufacturer.trim().replace(/\s+/g, " ");
+  if (!Object.keys(clean).length) return 0;
+  const changed: string[] = [];
+  await db.transaction("rw", db.parts, db.outbox, async () => {
+    const at = now();
+    for (const id of ids) {
+      const p = await db.parts.get(id);
+      if (!p || p.deletedAt) continue;
+      const next = { ...p, ...clean, updatedAt: at };
+      // Toss and Donate/Sell parts don't go in bins.
+      if (!isKept(next)) Object.assign(next, { binId: null, movedBack: false });
+      await db.parts.put(next);
+      changed.push(id);
+    }
+    await enqueue("parts", changed);
+  });
+  return changed.length;
+}
+
 // Returns how many parts were changed. Not-kept parts are skipped.
 export async function assignBin(ids: string[], binId: string | null): Promise<number> {
   const changed: string[] = [];

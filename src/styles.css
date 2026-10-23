@@ -84,6 +84,8 @@ h1 .part-code { font-size: 17px; margin-top: 4px; }
   backdrop-filter: blur(6px);
 }
 .sticky-actions > * { flex: 1 1 0; max-width: 360px; }
+.sticky-actions > .sticky-count { flex: 0 0 auto; align-self: center; font-weight: 700; }
+.screen:has(> .sticky-actions) { padding-bottom: 150px; }
 .actions-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .actions-row > * { flex: 1 1 160px; }
 
