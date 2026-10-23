@@ -6,6 +6,7 @@ import { db } from "../db/db";
 import { ValidationError, deletePart, duplicatePart, savePart, stripPart, suggestPartId } from "../db/repo";
 import { distinctOptions, filterParts, manufacturerOptions, samePartNumber } from "../domain/search";
 import { indexSystems } from "../domain/systems";
+import { priceLookupLinks } from "../domain/priceLookup";
 import { PartPhotos } from "./Photos";
 import BulkEdit from "./BulkEdit";
 import { ScanButton, UPC_NOTE } from "./Scanner";
@@ -413,6 +414,7 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
   const bins = useBins();
   const allParts = useParts();
   const sameNumber = useMemo(() => samePartNumber(allParts ?? [], f.mfrPartNumber, part?.id), [allParts, f.mfrPartNumber, part?.id]);
+  const lookups = priceLookupLinks({ mfrPartNumber: f.mfrPartNumber ?? "", manufacturer: f.manufacturer ?? "" });
   const [scanNote, setScanNote] = useState(""); // set when a scan looks like a UPC rather than a part number
   const systems = useSystems();
   // f.systemId holds the sub-system when one is picked, otherwise the main system.
@@ -654,6 +656,21 @@ function PartForm({ part, initial }: { part: Part | null; initial: Form }) {
             <input inputMode="decimal" value={f.retailPrice} onChange={(e) => set({ retailPrice: e.target.value })} placeholder="0.00" />
           </Field>
         </div>
+        {lookups.length > 0 ? (
+          <div className="field">
+            <span className="field-label">Check the price</span>
+            <div className="actions-row">
+              {lookups.map((l) => (
+                <a key={l.label} className="btn" href={l.url} target="_blank" rel="noopener noreferrer">
+                  {l.label} ↗
+                </a>
+              ))}
+            </div>
+            <small className="hint">Opens a search for {f.mfrPartNumber.trim()} in a new tab. Type the list price into Retail price.</small>
+          </div>
+        ) : (
+          <small className="hint">Add a part number to look up its price.</small>
+        )}
       </fieldset>
 
       <fieldset>
