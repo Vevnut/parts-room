@@ -244,10 +244,12 @@ export async function quickAdd(input: {
   manufacturer?: string;
   oldLocation?: string;
   stagingSpot?: string;
+  notes?: string;
 }): Promise<Part> {
-  const { mfrPartNumber, manufacturer, oldLocation, stagingSpot, ...rest } = input;
+  const { mfrPartNumber, manufacturer, oldLocation, stagingSpot, notes, ...rest } = input;
   return savePart({
     ...rest,
+    notes: (notes ?? "").trim(),
     mfrPartNumber: (mfrPartNumber ?? "").trim(),
     manufacturer: (manufacturer ?? "").trim(),
     oldLocation: (oldLocation ?? "").trim(),

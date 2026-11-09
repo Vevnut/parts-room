@@ -4,6 +4,7 @@ import type { Disposition } from "./rules.js";
 
 export interface QuickAddForm {
   name: string;
+  notes: string; // shown as Description
   mfrPartNumber: string;
   manufacturer: string;
   oldLocation: string;
@@ -13,7 +14,7 @@ export interface QuickAddForm {
   disposition: Disposition | null;
 }
 
-export const blankQuickAdd = (): QuickAddForm => ({ name: "", mfrPartNumber: "", manufacturer: "", oldLocation: "", stagingSpot: "", systemId: null, qty: 1, disposition: "Keep" });
+export const blankQuickAdd = (): QuickAddForm => ({ name: "", notes: "", mfrPartNumber: "", manufacturer: "", oldLocation: "", stagingSpot: "", systemId: null, qty: 1, disposition: "Keep" });
 
 export function nextQuickAddForm(prev: QuickAddForm): QuickAddForm {
   return { ...blankQuickAdd(), systemId: prev.systemId, manufacturer: prev.manufacturer, oldLocation: prev.oldLocation, stagingSpot: prev.stagingSpot ?? "" };
